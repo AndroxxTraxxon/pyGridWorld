@@ -82,6 +82,7 @@ class Actor :
         if node.actor != None:
             node.actor.removeSelfFromGrid()
         node.actor = self
+        grid.actors.append(self)
         self.grid = grid
         self.loc = loc
         node.updateUI()
@@ -118,6 +119,15 @@ class Node:
 class GridWorld:
     """A structure to allow the simple learning of Python in an object-oriented fashion"""
     def playButtonPress(self):
+        self.playing = not self.playing
+        if self.playing == False:
+            print("\nPaused!")
+        else: print("\nPlaying!")
+        self.turn()
+        return
+    def stepButtonPress(self):
+        self.playing = False
+        self.turn()
         return
     def __init__(self, width = None, height = None, scale = None, elementType = "button", turnDelay = 200, resizeable = False, autoRun = False):
         if width != None:
@@ -179,7 +189,11 @@ class GridWorld:
         self.botFrame = tkinter.Frame(self.mainFrame, height = self.scale)
         self.botFrame.grid(row = self.height, columnspan = self.width, sticky = tkinter.N+tkinter.S+tkinter.E+tkinter.W)
         self.playButton = tkinter.Button(self.botFrame, command = self.playButtonPress, text = "Play/Pause")
-        self.playButton.grid(row = 0, columnspan = 2, sticky = tkinter.W)
+        self.playButton.grid(row = 0, column = 0, columnspan = 2, sticky = tkinter.W)
+        self.stepButton = tkinter.Button(self.botFrame, command = self.stepButtonPress, text = "Step")
+        self.stepButton.grid(row = 0, column = 2, columnspan = 2, sticky = tkinter.W)
+        self.turnLabel = tkinter.Label(self.botFrame, text = "Turn: Not Started")
+        self.turnLabel.grid(row = 0, column = 4, columnspan = 2, sticky = tkinter.W)
         #DEBUG: print("Dimensions:\nWidth: " + str(self.mainFrame.winfo_width()) + "\nHeight: "+str(self.mainFrame.winfo_height()))
         self.mainFrame.pack(fill = "both", expand = True)
         #self.mainFrame.grid_propagate(False)
@@ -201,16 +215,20 @@ class GridWorld:
         return False
 
     def run(self):
+        self.turnCount = 0
         if self.playing:
             self.app.after(self.turnDelay, self.turn)
         self.app.mainloop()
 
-
     def turn(self):
+        print("\n Turn " + str(self.turnCount))
         for a in self.actors:
             a.act()
         if self.playing == True:
             self.app.after(self.turnDelay, self.turn)
+        self.turnLabel.config(text = "Turn: " + str(self.turnCount))
+        self.turnCount += 1
+
 
 def test():
     world = GridWorld()
