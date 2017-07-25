@@ -1,17 +1,17 @@
 import tkinter as tk
-true = True # for simplicity...
-none = None
-
-directionMap = {"north": 0, "northeast": 45, "east": 90, "southeast": 135, "south": 180, "southwest": 225, "west": 270, "northwest": 315}
-
 class Actor :
-    def __init__(self, img = None, grid = None, loc = None, color = "blue", dir = 0):
+    def __init__(self, img = None, grid = None, loc = None, color = "blue", direction = 0):
         if grid != None or grid.__class__ == "GridWorld":
-             self.__grid = grid
+             self.grid = grid
+
         if loc == None or loc.__class__ != "<class 'tuple'>"or len(loc)!=2:
-            self.__loc = (0,0)
+            self.loc = (0,0)
         else:
-            self.__loc = loc
+            self.loc = loc
+        if img == None:
+            self.img = "img\\actor.png"
+
+        self.direction = direction
 
 
     def getColor (self):
@@ -74,15 +74,30 @@ class Actor :
         self.direction = (self.direction + 180)%360
         return
     def removeSelfFromGrid(self):
-        node = grid.getNode(self.loc)
+        node = self.grid.getNode(self.loc)
+        self.widget.pack_forget()
+        self.widget = None
         node.actor = None
+        self.grid.actors.remove(self)
+        self.grid = None
         return True
+
     def addSelfToGrid(self, grid, loc):
         node = grid.getNode(loc)
-        if node.actor != None:
+        if node.actor != None: #first, remove existing actor, if there is one present.
             node.actor.removeSelfFromGrid()
         node.actor = self
         grid.actors.append(self)
+        img = tk.PhotoImage(file = self.img)
+
+        img = img.subsample(int(img.width()/grid.scale))
+        img.config(width = grid.scale, height = grid.scale)
+
+        print("Image: " + str(img.width()) + "x" + str(img.height()))
+        # self.widget = tk.Label(node.ui_el)
+        # self.widget.pack(padx = 0, pady = 0)
+        self.widget = img
+
         self.grid = grid
         self.loc = loc
         node.updateUI()
@@ -93,7 +108,7 @@ class Node:
         # color = "#" + str()
         # self.ui_el.config(bg = "red", text = str(self.loc[0]) + ", " + str(self.loc[1]))
         a = Actor()
-        a.addSelfToGrid(self.grid, self.loc)
+        a.addSelfToGrid(grid = self.grid, loc = self.loc)
         return
     def __init__(self, grid, ui_el = None, loc = None, actor = None, clickFunction = None):
         self.grid = grid
@@ -109,25 +124,30 @@ class Node:
         if loc != None  and  str(loc.__class__) == "<class 'tuple'>"  and  len(loc) == 2:
             self.loc = loc
         else:
-            raise ValueError ("A Node must be initialized with a location. Please assign an location to loc.\n"+
+            raise ValueError ("A Node must be initialized with a location. Please assign an location to loc."+
                 "loc: " + str(loc.__class__) + ": length " + str(len(loc)))
         self.actor = actor
+        if(actor != None):
+            actor.addSelfToGrid(self.loc)
+
 
     def updateUI(self):
         return False
 
 class GridWorld:
+    directionMap = {"north": 0, "northeast": 45, "east": 90, "southeast": 135, "south": 180, "southwest": 225, "west": 270, "northwest": 315}
     """A structure to allow the simple learning of Python in an object-oriented fashion"""
     def playButtonPress(self):
         self.playing = not self.playing
         if self.playing == False:
-            print("\nPaused!")
-        else: print("\nPlaying!")
-        self.turn()
+            print("Paused!")
+        else:
+            print("Playing!")
+            self.turn()
         return
     def stepButtonPress(self):
         self.playing = False
-        self.turn()
+        self.turn(isStep = True)
         return
     def __init__(self, width = None, height = None, scale = None, elementType = "button", turnDelay = 200, resizeable = False, autoRun = False):
         if width != None:
@@ -199,15 +219,13 @@ class GridWorld:
         #self.mainFrame.grid_propagate(False)
         """ Setting the initial size of the window """
         self.app.geometry(str(self.width * self.scale)+"x"+str((self.height + 1) * self.scale))
-        self.app.resizable(width = resizeable, height = resizeable)
+        # self.app.resizable(width = resizeable, height = resizeable)
 
-
-
-    def getNode(self, row = 0, col = 0, loc = None):
+    def getNode(self, loc):
         if loc != None and loc.__class__ == (0,0).__class__ and len(loc) >= 2:
             row = loc[0]
             col = loc[1]
-        return nodes[row, col]
+        return self.nodes[row, col]
 
     def isOccupied(self, loc):
         if self.getNode(loc = loc).actor != None:
@@ -220,14 +238,15 @@ class GridWorld:
             self.app.after(self.turnDelay, self.turn)
         self.app.mainloop()
 
-    def turn(self):
-        print("\n Turn " + str(self.turnCount))
-        for a in self.actors:
-            a.act()
-        if self.playing == True:
-            self.app.after(self.turnDelay, self.turn)
-        self.turnLabel.config(text = "Turn: " + str(self.turnCount))
-        self.turnCount += 1
+    def turn(self, isStep = False):
+        if isStep or self.playing == True:
+            print(" Turn " + str(self.turnCount))
+            for a in self.actors:
+                a.act()
+            if self.playing == True:
+                self.app.after(self.turnDelay, self.turn)
+            self.turnLabel.config(text = "Turn: " + str(self.turnCount))
+            self.turnCount += 1
 
 
 def test():
