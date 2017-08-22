@@ -23,27 +23,30 @@ class Node:
         if loc != None  and  loc.__class__ == tuple and  len(loc) == 2:
             self.loc = loc
         else:
-            print(str(loc.__class__) + " : : " + str(tuple))
-            raise ValueError ("A Node must be initialized with a location. Please assign an location to loc.\n"+
+            raise ValueError ("A Node must be initialized with a location. Please assign an location to loc."+
                 "loc: " + str(loc.__class__) + ": length " + str(len(loc)))
         self.actor = actor
+        if(actor != None):
+            actor.addSelfToGrid(self.loc)
+
 
     def updateUI(self):
         return False
 
 class GridWorld:
+    directionMap = {"north": 0, "northeast": 45, "east": 90, "southeast": 135, "south": 180, "southwest": 225, "west": 270, "northwest": 315}
     """A structure to allow the simple learning of Python in an object-oriented fashion"""
     def playButtonPress(self):
         self.playing = not self.playing
         if self.playing == False:
-            print("\nPaused!")
+            print("Paused!")
         else:
-            print("\nPlaying!")
+            print("Playing!")
             self.turn()
         return
     def stepButtonPress(self):
         self.playing = False
-        self.turn(override = True)
+        self.turn(isStep = True)
         return
     def __init__(self, width = None, height = None, scale = None, elementType = "button", turnDelay = 200, resizeable = False, autoRun = False):
         if width != None:
@@ -73,9 +76,9 @@ class GridWorld:
 
         """ Creating the application window """
 
-        self.app = tkinter.Tk()
+        self.app = tk.Tk()
         self.app.wm_title("Python GridWorld")
-        self.mainFrame = tkinter.Frame(self.app,cursor = "cross")
+        self.mainFrame = tk.Frame(self.app,cursor = "cross")
 
         """ Generating the button grid"""
         self.nodes = {} # an organized structure to store each node/button/frame
@@ -85,14 +88,14 @@ class GridWorld:
             self.mainFrame.grid_rowconfigure(r, weight = 1)
             for c in range(self.width):
                 if self.elementType == "button":
-                    btn = tkinter.Button(self.mainFrame)
+                    btn = tk.Button(self.mainFrame)
                 elif self.elementType == "frame":
-                    btn = tkinter.Frame(self.mainFrame)
+                    btn = tk.Frame(self.mainFrame)
                 else:
                     self.elementType = "frame"
-                    btn = tkinter.Frame(self.mainFrame)
+                    btn = tk.Frame(self.mainFrame)
                 btn.config(width = self.scale, height = self.scale, bg = "#ccc")
-                btn.grid(row = r, column = c, sticky = tkinter.N+tkinter.S+tkinter.E+tkinter.W)
+                btn.grid(row = r, column = c, sticky = tk.N+tk.S+tk.E+tk.W)
                 if(r * self.width + c - r)%2 == 0:
                     btn.config(bg = "#ddd", cursor = "target")
                 node = Node(self, btn, (r,c))
@@ -102,21 +105,22 @@ class GridWorld:
             self.mainFrame.grid_columnconfigure(c, weight = 1)
 
         """ Generating the toolbar on the bottom """
-        self.botFrame = tkinter.Frame(self.mainFrame, height = self.scale)
-        self.botFrame.grid(row = self.height, columnspan = self.width, sticky = tkinter.N+tkinter.S+tkinter.E+tkinter.W)
-        self.playButton = tkinter.Button(self.botFrame, command = self.playButtonPress, text = "Play/Pause")
-        self.playButton.grid(row = 0, column = 0, columnspan = 2, sticky = tkinter.W)
-        self.stepButton = tkinter.Button(self.botFrame, command = self.stepButtonPress, text = "Step")
-        self.stepButton.grid(row = 0, column = 2, columnspan = 2, sticky = tkinter.W)
-        self.turnLabel = tkinter.Label(self.botFrame, text = "Turn: Not Started")
-        self.turnLabel.grid(row = 0, column = 4, columnspan = 2, sticky = tkinter.W)
+        self.botFrame = tk.Frame(self.mainFrame, height = self.scale)
+        self.botFrame.grid(row = self.height, columnspan = self.width, sticky = tk.N+tk.S+tk.E+tk.W)
+        self.playButton = tk.Button(self.botFrame, command = self.playButtonPress, text = "Play/Pause")
+        self.playButton.grid(row = 0, column = 0, columnspan = 2, sticky = tk.W)
+        self.stepButton = tk.Button(self.botFrame, command = self.stepButtonPress, text = "Step")
+        self.stepButton.grid(row = 0, column = 2, columnspan = 2, sticky = tk.W)
+        self.turnLabel = tk.Label(self.botFrame, text = "Turn: Not Started")
+        self.turnLabel.grid(row = 0, column = 4, columnspan = 2, sticky = tk.W)
         #DEBUG: print("Dimensions:\nWidth: " + str(self.mainFrame.winfo_width()) + "\nHeight: "+str(self.mainFrame.winfo_height()))
         self.mainFrame.pack(fill = "both", expand = True)
         #self.mainFrame.grid_propagate(False)
         """ Setting the initial size of the window """
         self.app.geometry(str(self.width * self.scale)+"x"+str((self.height + 1) * self.scale))
-        self.app.resizable(width = resizeable, height = resizeable)
+        # self.app.resizable(width = resizeable, height = resizeable)
 
+<<<<<<< HEAD
     def getNode(self, loc = None):
         if loc.__class__ == tuple and len(loc) == 2:
             row = loc[0]
@@ -125,6 +129,13 @@ class GridWorld:
         else:
             raise ValueError("The function GridWorld.getNode(loc) requires a tuple of length 2 as an argument.")
             return None
+=======
+    def getNode(self, loc):
+        if loc != None and loc.__class__ == (0,0).__class__ and len(loc) >= 2:
+            row = loc[0]
+            col = loc[1]
+        return self.nodes[row, col]
+>>>>>>> origin/0.0.1
 
     def isOccupied(self, loc):
         if self.getNode(loc = loc).actor != None:
@@ -137,9 +148,15 @@ class GridWorld:
             self.app.after(self.turnDelay, self.turn)
         self.app.mainloop()
 
+<<<<<<< HEAD
     def turn(self, override = False):
         if override or self.playing:
             print("\n Turn " + str(self.turnCount))
+=======
+    def turn(self, isStep = False):
+        if isStep or self.playing == True:
+            print(" Turn " + str(self.turnCount))
+>>>>>>> origin/0.0.1
             for a in self.actors:
                 a.act()
             if self.playing == True:
