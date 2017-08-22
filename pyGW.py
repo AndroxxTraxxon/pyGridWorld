@@ -1,4 +1,4 @@
-import tkinter
+import tkinter as tk
 from Actor import *
 
 
@@ -120,22 +120,13 @@ class GridWorld:
         self.app.geometry(str(self.width * self.scale)+"x"+str((self.height + 1) * self.scale))
         # self.app.resizable(width = resizeable, height = resizeable)
 
-<<<<<<< HEAD
-    def getNode(self, loc = None):
-        if loc.__class__ == tuple and len(loc) == 2:
-            row = loc[0]
-            col = loc[1]
-            return self.nodes[row, col]
-        else:
-            raise ValueError("The function GridWorld.getNode(loc) requires a tuple of length 2 as an argument.")
-            return None
-=======
+
     def getNode(self, loc):
         if loc != None and loc.__class__ == (0,0).__class__ and len(loc) >= 2:
             row = loc[0]
             col = loc[1]
         return self.nodes[row, col]
->>>>>>> origin/0.0.1
+
 
     def isOccupied(self, loc):
         if self.getNode(loc = loc).actor != None:
@@ -148,15 +139,9 @@ class GridWorld:
             self.app.after(self.turnDelay, self.turn)
         self.app.mainloop()
 
-<<<<<<< HEAD
     def turn(self, override = False):
         if override or self.playing:
             print("\n Turn " + str(self.turnCount))
-=======
-    def turn(self, isStep = False):
-        if isStep or self.playing == True:
-            print(" Turn " + str(self.turnCount))
->>>>>>> origin/0.0.1
             for a in self.actors:
                 a.act()
             if self.playing == True:

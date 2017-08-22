@@ -11,6 +11,7 @@ class Actor :
         }
 
     def __init__(self, img = None, grid = None, loc = None, color = "blue", dir = 0):
+        self.grid = None
         if grid != None or grid.__class__ == "GridWorld":
              self.__grid = grid
         if loc == None or loc.__class__ != "<class 'tuple'>"or len(loc)!=2:
@@ -40,7 +41,7 @@ class Actor :
               4(S)
         The Actor's direction will be approximated to make the movement comply
         to one of the 8 surrounding location possibilities.
-        this function does NOT check for out of bounds, and (should?) throw an error for out of bounds.
+        this function does NOT check for out of bounds, and (should?) raise an error for out of bounds.
         """
         movementVector = (0,0)
         moveDirection = int(round((self.direction%360)/45.0))%8
@@ -75,16 +76,31 @@ class Actor :
         self.direction = (self.direction + 180)%360
         return
     def removeSelfFromGrid(self):
-        node = grid.getNode(self.loc)
+        node = self.grid.getNode(self.loc)
         node.actor = None
         return True
+
     def addSelfToGrid(self, grid, loc):
         node = grid.getNode(loc)
         if node.actor != None:
-            node.actor.removeSelfFromGrid()
+            if not node.actor.removeSelfFromGrid():
+                raise
         node.actor = self
         grid.actors.append(self)
         self.grid = grid
         self.loc = loc
         node.updateUI()
         return True
+
+
+class ActorError(Exception):
+    Codes = {
+        "ImproperRemovalError": 1
+    }
+    Names = {v: k for k, v in Codes.items()}
+
+    def __init__(self, message, errors):
+        errorTag = ""
+        for error in errors:
+            errorTag += "ActorError." + Names[error] + " | "
+        super().__init__(errorTag + message)
