@@ -1,13 +1,21 @@
+import time
 import tkinter as tk
 from Actor import *
 
+tkColors = [
+    "white", "black", "red", "green", "blue", "cyan", "yellow", "magenta"
+]
+
+def randomColor():
+    color = tkColors[int(round(time.time() * 1000))%len(tkColors)]
+    return color
 
 class Node:
     def clickDefault(self):
-        # color = "#" + str()
-        # self.ui_el.config(bg = "red", text = str(self.loc[0]) + ", " + str(self.loc[1]))
-        a = Actor()
-        a.addSelfToGrid(grid = self.grid, loc = self.loc)
+        # color = "#" + str(self.actor.)
+        self.ui_el.config(bg = "red", text = str(self.loc[0]) + ", " + str(self.loc[1]))
+        # a = Actor()
+        # a.addSelfToGrid(grid = self.grid, loc = self.loc)
         return
     def __init__(self, grid, ui_el = None, loc = None, actor = None, clickFunction = None):
         self.grid = grid
@@ -31,6 +39,16 @@ class Node:
 
 
     def updateUI(self):
+        if self.actor != None:
+            tmp = 0
+            #render actor
+            if self.actor.img == None:
+                tmp = 1
+                # put an 'X' in the middle of the button/frame, and make it the color of the actor.
+            else:
+                tmp = 2
+                #render the image into the button and update.
+                # get color of Actor, and apply a colorizing mask to the actor.
         return False
 
 class GridWorld:
@@ -46,7 +64,7 @@ class GridWorld:
         return
     def stepButtonPress(self):
         self.playing = False
-        self.turn(isStep = True)
+        self.turn(override = True)
         return
     def __init__(self, width = None, height = None, scale = None, elementType = "button", turnDelay = 200, resizeable = False, autoRun = False):
         if width != None:
@@ -151,6 +169,6 @@ class GridWorld:
 
 
 def test():
-    world = GridWorld()
+    world = GridWorld(width = 20, height = 15, scale = 40)
     world.run()
     return

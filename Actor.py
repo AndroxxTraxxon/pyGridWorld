@@ -37,7 +37,7 @@ class Actor :
               0 (N)
           7(NW) ^ 1(NE)
       6(W)    <-+->     2(E)
-          5(SW) V 3(SE)
+          5(SW) v 3(SE)
               4(S)
         The Actor's direction will be approximated to make the movement comply
         to one of the 8 surrounding location possibilities.
