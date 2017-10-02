@@ -14,8 +14,8 @@ class Actor:
         self.grid = None
         if grid is not None or grid.__class__ == "GridWorld":
             self.__grid = grid
-        if loc is None or loc.__class__ is not "<class 'tuple'>"
-        or len(loc) is not 2:
+        if (loc is None or loc.__class__ is not "<class 'tuple'>" or
+                len(loc) is not 2):
             self.__loc = (0, 0)
         else:
             self.__loc = loc
