@@ -1,0 +1,136 @@
+{
+    "version": {
+        "id": 0.01,
+        "date": "2018-05-25"
+    },
+    "frame":{
+        "title": "pyGridWorld"
+    },
+    "message":{
+        "default": "Click on a grid location to construct or manipulate an occupant."
+    },
+    "dialog":{
+        "help":{
+            "title": "GridWorld Help",
+            "error": "Could not load help file."
+        },
+        "license":{
+            "title": "GNU Public License",
+            "error": "Could not load license file"
+        },
+        "about":{
+            "title": "About GridWorld",
+            "text": "<h2>GridWorld</h2>\n<font size=-1>Version: {0} </font><p>\n<font size=-1>Copyright&copy; 2002, 2007 College Entrance Examination Board \n(http://www.collegeboard.com).<br>Copyright&copy; 2007 Cay S. Horstmann \n(http://horstmann.com).<br>Images created by Chris Renard, a student at \nthe School for the Talented and Gifted, Dallas Independent School District.</font></font>"
+        },
+        "chooser":{
+            "type": "Select a world"
+        },
+        "menu":{
+            "file": {
+                "title": "&World",
+                "new": {
+                    "title": "Set &grid...",
+                    "shortcut": "Ctrl+N"
+                },
+                "save": {
+                    "title": "&Save grid as...",
+                    "shortcut": "Ctrl+S"
+                },
+                "quit": {
+                    "title": "&Quit",
+                    "shortcut": "Ctrl+Q"
+                }
+            },
+            "run":{
+                "title": "&Run",
+                "shortcut": "Ctrl+R"
+            },
+            "view":{
+                "title": "&Location",
+                "zoomin": {
+                    "title": "Zoom &in",
+                    "shortcut": "Ctrl+PgUp"
+                },
+                "zoomout":{
+                    "title": "Zoom &out",
+                    "shortcut": "Ctrl+PgDown"
+                },
+                "left": {
+                    "title": "&Left",
+                    "shortcut": "Ctrl+Left"
+                },
+                "right": {
+                    "title": "&Right",
+                    "shortcut": "Ctrl+Right"
+                },
+                "up": {
+                    "title": "&Up",
+                    "shortcut": "Ctrl+Up"
+                },
+                "down": {
+                    "title": "&Down",
+                    "shortcut": "Ctrl+Down"
+                },
+                "edit": {
+                    "title":"&Edit",
+                    "shortcut":"Enter"
+                },
+                "delete":{
+                    "title": "Dele&te",
+                    "shortcut": "Delete"
+                },
+                "center":{
+                    "title":"&Bring (0,0) to upper left",
+                    "shortcut": "Ctrl+Home"
+                }
+            }, 
+            "help": {
+                "title": "&Help",
+                "about":"&About GridWorld...",
+                "help": {
+                    "title": "Gridworld &Help",
+                    "shortcut": "@HELP"
+                },
+                "license": "View &License..."
+            }
+        },
+        "method": {
+            "title": "Select a method",
+            "params": "Parameters",
+            "return": "Return value"
+        },
+        "constructor":{
+            "title": "Select a Constructor"
+        },
+        "error":{
+            "copy": "Copy"
+        }
+    },
+    "button": {
+        "gui":{
+            "step": "Step",
+            "run": "Run",
+            "stop": "Stop"
+        }
+    },
+    "slider": {
+        "slow": "Slow",
+        "fast": "Fast"
+    },
+    "cancel": "Cancel",
+    "error": {
+        "title": "Error",
+        "text": "An error occurred.",
+        "reason": "{0}",
+        "abort": {
+            "text": "An error occurred. The program must exit"
+        }
+    },
+    "cell":{
+        "tooltip":{
+            "nonempty":"{0} contains {1}",
+            "empty":"{0} is empty"
+        }
+    }
+    
+}
