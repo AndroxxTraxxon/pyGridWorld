@@ -259,7 +259,7 @@ class BoundedGrid(AbstractGrid):
             raise ValueError("BoundedGrid rows must be greater than 0.")
         if cols <= 0:
             raise ValueError("BoundedGrid rows must be greater than 0.")
-        self.occupantArray = ((None,)*cols,)*rows;
+        self.occupantArray = [[None,]*cols,]*rows;
     
     def getNumRows(self)->int:
         return len(self.occupantArray)
