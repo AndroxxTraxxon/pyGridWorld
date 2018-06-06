@@ -1,4 +1,5 @@
 from PyQt5 import QtCore, Qt, QtWidgets, QtGui
+QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
 
 import json
 import sys
@@ -238,15 +239,12 @@ class GridFrame(QtWidgets.QGraphicsView): #GridPanel
         self.displayMap = displayMap
         self.gridScene = GridScene(self)
         self.setScene(self.gridScene)
-#         self.setBackgroundBrush(Qt.QBrush(Qt.QColor('lightgray'), Qt.Qt.SolidPattern))
-#         self.setForegroundBrush(Qt.QBrush(Qt.QColor('white'), Qt.Qt.SolidPattern))
         self.viewMenu = Qt.QMenu(self)
         self.createActions()
         self.grid = None
         self.currentLocation = None
-        minSize = self.DEFAULT_CELL_SIZE * self.DEFAULT_CELL_COUNT * 2
+        minSize = self.DEFAULT_CELL_SIZE * self.DEFAULT_CELL_COUNT
         self.setMinimumSize(minSize, minSize)
-#         self.setGraphicsScene(Qt.QGraphicsScene())
 
     def processLocationClick(self, loc:grid.Location, event:Qt.QMouseEvent):
         if self.grid is not None:
@@ -257,6 +255,8 @@ class GridFrame(QtWidgets.QGraphicsView): #GridPanel
                 
         else:
             self.currentLocation = grid.Location(0,0)
+            
+        print(self.currentLocation)
             
 
     def setCellSize(self, cellSize):
@@ -309,12 +309,12 @@ class GridFrame(QtWidgets.QGraphicsView): #GridPanel
     def zoomIn(self):
         if not self.scene():
             return
-        self.scale(1.5, 1.5)
+        self.scale(2,2)
  
     def zoomOut(self):
         if not self.scene():
             return
-        self.scale(1.0 / 1.5, 1.0 / 1.5)
+        self.scale(.5, .5)
         
     def panLeft(self):
         self.translate(self.cellSize, self.cellSize)
