@@ -1,5 +1,6 @@
 import typing 
 import math
+import tkinter as tk
 
 
 class Location:
@@ -77,6 +78,9 @@ class Location:
 
     def __str__(self) -> str:
         return "(" + str(self.row) + ", " + str(self.col) + ")"
+    
+    def __repr__(self) -> str:
+        return self.__class__.__name__ + str(self)
         
 
 class Grid:
@@ -115,7 +119,11 @@ class Grid:
         raise NotImplementedError()
 
     def getNeighbors(self, loc:Location):
-        raise NotImplementedError
+        raise NotImplementedError()
+
+    @classmethod
+    def builder(cls, parent: tk.Toplevel):
+        raise NotImplementedError()
 
 
 class AbstractGrid(Grid):
@@ -163,7 +171,7 @@ class BoundedGrid(AbstractGrid):
             raise ValueError("rows <= 0")
         if cols <= 0:
             raise ValueError("cols <= 0")
-        self.occupant_array = [[None] * cols] * rows
+        self.occupant_array = [[None for c in range(cols)] for r in range(rows)]
 
     @property
     def rowCount(self):
@@ -211,6 +219,10 @@ class BoundedGrid(AbstractGrid):
         self.occupant_array[loc.row][loc.col] = None
         return old_occupant
 
+    @classmethod
+    def builder(cls, parent:tk.Toplevel):
+        return cls()
+
 
 class UnboundedGrid(AbstractGrid):
 
@@ -253,3 +265,7 @@ class UnboundedGrid(AbstractGrid):
         old_occupant = self.occupant_map.get(loc)
         self.occupant_map[loc] = None
         return old_occupant
+
+    @classmethod
+    def builder(cls, parent:tk.Toplevel):
+        return cls() 

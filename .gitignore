@@ -49,3 +49,5 @@ Temporary Items
 #Python cache
 __pycache__\ *
 *.pyc
+__venv__
+.vscode

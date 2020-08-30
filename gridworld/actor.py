@@ -1,11 +1,10 @@
-import pyGridWorld.colors as colors
-from pyGridWorld.grid import Grid, Location
-import pyGridWorld.world as world
+from gridworld.colors import Color
+from gridworld.grid import Grid, Location
+from gridworld.world import World
 import typing
 
 import random
 import tkinter as tk
-
 
 
 class Actor:
@@ -13,10 +12,10 @@ class Actor:
     grid:Grid
     location:Location
     direction:int
-    color:colors.Color
+    color:Color
 
     def __init__(self):
-        self.color = colors.BLUE
+        self.color = Color.BLUE
         self.direction = Location.NORTH
         self.grid = None
         self.location = None
@@ -28,8 +27,10 @@ class Actor:
         self.direction += Location.HALF_CIRCLE
 
     def putSelfInGrid(self, gr:Grid, loc:Location):
-        if gr is not None:
+        if self.grid is not None:
             raise ValueError("This actor is already contained in a grid.")
+        if gr is None:
+            raise ValueError("grid is None")
         actor:Actor = gr.get(loc)
         if actor is not None:
             actor.removeSelfFromGrid()
@@ -72,22 +73,22 @@ class Actor:
     def __str__(self):
         return (
             self.__class__.__name__ + 
-            "[location=" + self.location + 
-            ",direction=" + self.direction + 
-            ",color=" + self.color + "]"
+            "[location=" + str(self.location) + 
+            ",direction=" + str(self.direction) + 
+            ",color=" + str(self.color) + "]"
         )
 
 
-class ActorWorld(world.World):
+class ActorWorld(World):
     DEFAULT_MESSAGE = "Click on a grid location to construct or manipulate an actor."
 
-    def __init__(self, gr:Grid):
-        super(gr)
+    def __init__(self, gr:Grid = None):
+        super().__init__(gr)
 
     def show(self):
         if(self.message is None):
             self.setMessage(self.DEFAULT_MESSAGE)
-        super.show()
+        super().show()
     
     def step(self):
         gr = self.getGrid()
@@ -97,6 +98,7 @@ class ActorWorld(world.World):
         for a in actors:
             if a.grid == gr:
                 a.act()
+        print(self)
     
     def add(self, occupant:Actor, loc:Location = None):
         if loc is None:
@@ -114,7 +116,7 @@ class ActorWorld(world.World):
 class Flower(Actor):
     DARKENING_FACTOR = 0.05
 
-    def __init__(self, color=colors.PINK):
+    def __init__(self, color=Color.PINK):
         super().__init__()
         self.color = color
 
@@ -122,12 +124,12 @@ class Flower(Actor):
         red = int(self.color.red * (1-self.DARKENING_FACTOR))
         green = int(self.color.green * (1-self.DARKENING_FACTOR))
         blue = int(self.color.blue * (1-self.DARKENING_FACTOR))
-        self.color = colors.Color(red, green, blue)
+        self.color = Color(red, green, blue)
         
 
 class Bug(Actor):
     
-    def __init__(self, color=colors.RED):
+    def __init__(self, color=Color.RED):
         super().__init__()
         self.color = color
 
@@ -166,7 +168,7 @@ class Bug(Actor):
 
 class Rock(Actor):
 
-    def __init__(self, color=colors.BLACK):
+    def __init__(self, color=Color.BLACK):
         super().__init__()
         self.color = color
 

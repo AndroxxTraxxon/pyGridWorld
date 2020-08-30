@@ -1,40 +1,41 @@
-import pyGridWorld.grid as grid
-import pyGridWorld.gui as gui
+from gridworld.grid import Location, Grid, BoundedGrid, UnboundedGrid
 import random
 import tkinter as tk
 
 
 class World:
-    gr: grid.Grid = None
+    gr: Grid = None
     occupantClassNames: set = None
     gridClassNames: set = None
     message: str = None
-    frame: tk.Frame = None
+    frame = None
 
     generator:random.Random = random.Random()
 
     DEFAULT_ROWS = 10
     DEFAULT_COLS = 10
 
-    def __init__(self, g:grid.Grid = grid.BoundedGrid(DEFAULT_ROWS, DEFAULT_COLS)):
+    def __init__(self, g:Grid=None):
+        if g is None:
+            g = BoundedGrid(self.DEFAULT_ROWS, self.DEFAULT_COLS)
         self.gr = g
         self.gridClassNames = set()
         self.occupantClassNames = set()
-        self.gridClassNames.add(grid.BoundedGrid.__name__)
-        self.gridClassNames.add(grid.UnboundedGrid.__name__)
-        print(self.gridClassNames)
+        self.gridClassNames.add(BoundedGrid.__name__)
+        self.gridClassNames.add(UnboundedGrid.__name__)
+        # print(self.gridClassNames)
 
     def show(self):
         if self.frame is None:
-            self.frame = gui.WorldFrame(self)
-            # self.frame.setVisible(True)
-        # else:
-            # self.frame.repaint()
+            from gridworld.gui import WorldFrame
+            self.frame = WorldFrame(self)
+        self.frame.show()
+        
 
     def getGrid(self):
         return self.gr
 
-    def setGrid(self, newGrid:grid.Grid):
+    def setGrid(self, newGrid:Grid):
         self.gr = newGrid
         self.repaint()
 
@@ -48,13 +49,13 @@ class World:
     def step(self):
         self.repaint()
     
-    def locationClicked(self, loc:grid.Location) -> bool:
+    def locationClicked(self, loc:Location) -> bool:
         return False
 
-    def keyPressed(self, desc:str, loc:grid.Location) -> bool:
+    def keyPressed(self, desc:str, loc:Location) -> bool:
         return False
 
-    def getRandomEmptyLocation(self) -> grid.Location:
+    def getRandomEmptyLocation(self) -> Location:
         gr = self.getGrid()
         rows = gr.rowCount
         cols = gr.colCount
@@ -63,7 +64,7 @@ class World:
             for r, row in enumerate(gr.rows):
                 for c, item in enumerate(row):
                     if item is not None:
-                        emptyLocs.append(grid.Location(r,c))
+                        emptyLocs.append(Location(r,c))
             if(len(emptyLocs) == 0):
                 return None
             r = self.generator.random()
@@ -80,30 +81,30 @@ class World:
                     c = int(self.DEFAULT_COLS * self.generator.gauss(0, 1.0))
                 else:
                     c = self.generator.randint(0, cols)
-                loc = grid.Location(r,c)
+                loc = Location(r,c)
                 if(gr.isValid(loc) and gr.get(loc) is None):
                     return loc
 
-    def add(self, loc:grid.Location, occupant):
+    def add(self, loc:Location, occupant):
         self.getGrid().put(loc, occupant)
         self.repaint()
 
-    def remove(self, loc:grid.Location):
+    def remove(self, loc:Location):
         r = self.getGrid().remove(loc)
         self.repaint()
         return r
 
     def repaint(self): 
         if self.frame != None:
-            self.frame.repaint
+            self.frame.rerender()
 
     def __str__(self):
-        s = ""
+        s = "World:\n"
         gr = self.getGrid()
         rmin = 0
-        rmax = gr.rowCount - 1
+        rmax = gr.rowCount
         cmin = 0
-        cmax = gr.colCount - 1
+        cmax = gr.colCount
         if rmax < 0 or cmax < 0:
             for loc in gr.occupiedLocations:
                 r = loc.row
@@ -117,14 +118,16 @@ class World:
                 if c > cmax:
                     cmax = c
 
+        s += "#" * (cmax-cmin) + "\n"
         for i in range(rmin, rmax):
             for j in range(cmin, cmax):
-                obj = gr.get(grid.Location(i,j))
+                obj = gr.get(Location(i,j))
                 if obj is None:
                     s += " "
                 else:
                     s += str(obj)[0]
             s += "\n"
+        s += "#" * (cmax-cmin)
         return s
 
 
