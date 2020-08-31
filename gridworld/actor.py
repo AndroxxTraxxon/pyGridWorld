@@ -1,6 +1,7 @@
 from gridworld.colors import Color
 from gridworld.grid import Grid, Location
 from gridworld.world import World
+from threading import Thread
 import typing
 
 import random
@@ -84,6 +85,7 @@ class ActorWorld(World):
 
     def __init__(self, gr:Grid = None):
         super().__init__(gr)
+        self.step_thread:Thread = None
 
     def show(self):
         if(self.message is None):
@@ -91,19 +93,29 @@ class ActorWorld(World):
         super().show()
     
     def step(self):
-        gr = self.getGrid()
-        actors:typing.List[Actor] = list()
-        for loc in gr.occupiedLocations:
-            actors.append(gr.get(loc))
-        for a in actors:
-            if a.grid == gr:
-                a.act()
+        if self.step_thread is not None and self.step_thread.is_alive:
+            self.step_thread.join(0.01)
+        def action():
+            gr = self.getGrid()
+            actors:typing.List[Actor] = list()
+            for loc in gr.occupiedLocations:
+                actors.append(gr.get(loc))
+            for a in actors:
+                if a.grid == gr:
+                    a.act()
+            self.repaint()
+        self.step_thread = Thread(target=action)
+        self.step_thread.start() 
     
     def add(self, occupant:Actor, loc:Location = None):
         if loc is None:
             loc = self.getRandomEmptyLocation()
+            print(loc)
         if loc is not None:
             occupant.putSelfInGrid(self.getGrid(), loc)
+        qual_class_name = occupant.__module__ + '.' + occupant.__class__.__name__
+        if qual_class_name not in self.occupant_types:
+            self.occupant_types[qual_class_name] = occupant.__class__
     
     def remove(self, loc:Location) -> Actor:
         occupant:Actor = self.getGrid().get(loc)

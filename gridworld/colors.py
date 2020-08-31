@@ -1,3 +1,7 @@
+import colorsys
+from enum import Enum
+from random import choice
+
 def clamp(_min, _max, value):
     return max(min(value, _max), _min)
 
@@ -24,6 +28,54 @@ class Color:
             except:
                 # oh well, we tried.
                 pass
+    @property
+    def hsv(self) -> tuple:
+        return colorsys.rgb_to_hsv(
+            self.red/255,
+            self.green/255,
+            self.blue/255,
+        )
+
+    @property
+    def hls(self) -> tuple:
+        return colorsys.rgb_to_hls(
+            self.red/255,
+            self.green/255,
+            self.blue/255,
+        )
+
+    @property
+    def yiq(self) -> tuple:
+        return colorsys.rgb_to_yiq(
+            self.red/255,
+            self.green/255,
+            self.blue/255,
+        )
+    
+    @property
+    def rgb(self) -> tuple:
+        return (
+            self.red,
+            self.green,
+            self.blue,
+        )
+
+    @classmethod
+    def from_hsv(cls, h, s, v):
+        red, green, blue = colorsys.hsv_to_rgb(h,s,v)
+        return cls(
+            int(red * 255),
+            int(green * 255),
+            int(blue * 255)
+        )
+    
+    @classmethod
+    def random(cls):
+        return cls.colordict[
+            choice(tuple(cls.colordict))
+        ]
+    
+    
 
     def __str__(self):
         return "#{red:02X}{green:02X}{blue:02X}".format(

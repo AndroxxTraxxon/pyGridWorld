@@ -1,6 +1,9 @@
 from gridworld.actor import ActorWorld, Bug, Rock
 from gridworld.grid import Location
 from gridworld.colors import Color
+
+import pprint
+
 class BoxBug(Bug):
     
     steps:int
@@ -22,14 +25,10 @@ class BoxBug(Bug):
 
 if __name__ == "__main__":
     world = ActorWorld()
-    alice = Bug(Color.ORANGE)
-
-    bob = BoxBug(3)
-
-
-    world.add(alice, Location(7,8))
-    world.add(bob, Location(5,5))
-    world.add(Rock(), Location(4, 9))
+    for i in range(8):
+        bug = BoxBug(i+1)
+        bug.color = Color.random()
+        world.add(bug)
     world.show()
     # input()
 

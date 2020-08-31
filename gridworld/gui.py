@@ -5,13 +5,12 @@ from gridworld.world import World
 
 import glob
 import os
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageOps
 import sys
-from time import sleep
+from time import sleep, time
 from threading import Timer
 import tkinter as tk
 from queue import Queue
-
 
 root = tk.Tk()
 root.overrideredirect(1)
@@ -108,7 +107,7 @@ class WorldFrame(tk.Toplevel):
             # sleep(GUIController.MIN_DELAY_MSECS/2000)
 
     def rerender(self):
-        self.display.render()
+        self.ui_update_actions.put(self.display.render)
 
     def make_menus(self):
         mbar = tk.Menu(self)
@@ -198,6 +197,7 @@ class GridPanel(tk.Frame):
             pass
 
     def render(self):
+        start_time = time()
         width = self.num_cols * (self.cell_size + self.line_width)
         height = self.num_rows * (self.cell_size + self.line_width)
         if hasattr(self, 'canvas'):
@@ -232,6 +232,8 @@ class GridPanel(tk.Frame):
             fill=tk.BOTH,
             expand=True,
         )
+        end_time = time()
+        print("Canvas Render Time:", end_time - start_time)
 
     def drawGridLines(self):
         width = self.num_cols * (self.cell_size + self.line_width)
@@ -261,9 +263,8 @@ class GridPanel(tk.Frame):
                 self.drawOccupant(xleft, ytop, occupant)
 
     def drawOccupant(self, xleft:int, ytop:int, occupant):
-        try:
-            image = self.generate_image(occupant)
-            assert image is not None
+        image = self.generate_image(occupant)
+        if image is not None:
             self.usedImages.append(image)
             self.canvas.create_image(
                 int(xleft + self.cell_size/2), 
@@ -271,7 +272,7 @@ class GridPanel(tk.Frame):
                 image=image,
                 anchor=tk.CENTER,
                 )
-        except:
+        else:
             self.canvas.create_text(
                 xleft, 
                 ytop, 
@@ -280,9 +281,25 @@ class GridPanel(tk.Frame):
             )
 
     def generate_image(self, occupant):
-        base_image = self.get_source_image(occupant.__class__.__name__)
-        base_image.thumbnail((self.cell_size, self.cell_size))
-        image = base_image.rotate(-occupant.direction)
+        image = self.get_source_image(occupant.__class__.__name__)
+        image.thumbnail((self.cell_size, self.cell_size))
+        if hasattr(occupant, 'color') and isinstance(occupant.color, Color):
+            greyscale = ImageOps.grayscale(image)
+            h,s,v = occupant.color.hsv
+            white_map = Color.from_hsv(h,s,min(1.0, v*2))
+            colorized = ImageOps.colorize(
+                greyscale, 
+                Color.GRAY15.rgb, 
+                white_map.rgb, 
+                mid=occupant.color.rgb,
+                midpoint=80
+            )
+            try:
+                a = image.getchannel('A')
+                colorized.putalpha(a)
+            except:
+                pass
+            image = colorized.rotate(-occupant.direction)
         return ImageTk.PhotoImage(image)
 
     def get_source_image(self, name):
@@ -361,11 +378,11 @@ class GUIController(tk.Frame):
         self.delay_time.set(self.INITIAL_DELAY)
         self.makeControls()
         self.reset_timer()
-        world = self.parent_frame.world
         self.pack(fill="x", side="bottom", expand=True)
         self.num_steps_to_run = 0
         self.num_steps_so_far = 0
         self.running = False
+        self.last_step_time = time()
 
     def makeControls(self):
         self.step_button = tk.Button(self, text="Step", command=self.step)
@@ -399,7 +416,7 @@ class GUIController(tk.Frame):
         self.run_button.configure(state=tk.DISABLED)
         self.num_steps_so_far = 0
         self.running = True
-        self.reset_timer()
+        self.step()
 
     def stop(self):
         self.running = False
@@ -408,27 +425,41 @@ class GUIController(tk.Frame):
         self.stop_button.configure(state=tk.DISABLED)
         self.step_button.configure(state=tk.NORMAL)
         self.run_button.configure(state=tk.NORMAL)
-        self.reset_timer()
+        self.step()
 
     def reset_timer(self):
         def action():
             if hasattr(self, 'timer') and self.timer.is_alive():
                 self.timer.cancel()
-            self.timer = Timer(self.delay_time.get()/1000, self.step)
-            if self.running:
-                self.timer.start()
+            print(self.time_since_last_step, self.delay_time.get()/1000)
+            delay = (self.delay_time.get()/1000) - self.time_since_last_step
+            if(delay > 0):
+                self.timer = Timer(delay, self.step)
+                if self.running:
+                    self.timer.start()
+            else:
+                self.step()
+            
         self.parent_frame.ui_update_actions.put(action)
 
     def step(self):
+        self.step_start = time()
         def action():
+            self.last_step_time = time()
             self.parent_frame.world.step()
-            self.parent_frame.rerender()
+            world_step_time = time()
+            print("World Step", world_step_time - self.last_step_time)
             self.num_steps_so_far += 1
             if self.num_steps_so_far == self.num_steps_to_run:
                 self.stop()
             # grid = self.parent_frame.world.getGrid()
             self.reset_timer()
+            print("full step", time() - self.step_start)
         self.parent_frame.ui_update_actions.put(action)
+
+    @property
+    def time_since_last_step(self):
+        return time() - self.last_step_time
         
         
 

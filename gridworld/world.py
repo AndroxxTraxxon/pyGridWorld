@@ -5,8 +5,8 @@ import tkinter as tk
 
 class World:
     gr: Grid = None
-    occupantClassNames: set = None
-    gridClassNames: set = None
+    occupant_types: dict = None
+    grid_types: dict = None
     message: str = None
     frame = None
 
@@ -19,10 +19,10 @@ class World:
         if g is None:
             g = BoundedGrid(self.DEFAULT_ROWS, self.DEFAULT_COLS)
         self.gr = g
-        self.gridClassNames = set()
-        self.occupantClassNames = set()
-        self.gridClassNames.add(BoundedGrid.__name__)
-        self.gridClassNames.add(UnboundedGrid.__name__)
+        self.grid_types = dict()
+        self.occupant_types = dict()
+        self.add_grid_type(BoundedGrid)
+        self.add_grid_type(UnboundedGrid)
 
     def show(self):
         if self.frame is None:
@@ -37,6 +37,10 @@ class World:
     def setGrid(self, newGrid:Grid):
         self.gr = newGrid
         self.repaint()
+
+    def add_grid_type(self, grid_type:type):
+        qual_class_name = grid_type.__module__ + '.' + grid_type.__class__.__name__
+        self.grid_types[qual_class_name] = grid_type
 
     def setMessage(self, newMessage:str):
         self.message = newMessage
@@ -60,13 +64,14 @@ class World:
         cols = gr.colCount
         if rows > 0 and cols > 0: # bounded grid
             emptyLocs = list()
-            for r, row in enumerate(gr.rows):
+            for r, row in enumerate(gr.occupant_array):
                 for c, item in enumerate(row):
-                    if item is not None:
+                    if item is None:
                         emptyLocs.append(Location(r,c))
             if(len(emptyLocs) == 0):
                 return None
-            r = self.generator.random()
+            r = int(self.generator.random() * len(emptyLocs))
+            print(r)
             return emptyLocs[r]
         else:
             while True:
@@ -86,6 +91,9 @@ class World:
 
     def add(self, loc:Location, occupant):
         self.getGrid().put(loc, occupant)
+        qual_class_name = occupant.__module__ + '.' + occupant.__class__.__name__
+        if qual_class_name not in self.occupant_types:
+            self.occupant_types[qual_class_name] = occupant.__class__
         self.repaint()
 
     def remove(self, loc:Location):

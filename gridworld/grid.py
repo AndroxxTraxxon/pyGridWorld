@@ -128,38 +128,31 @@ class Grid:
 
 class AbstractGrid(Grid):
 
-    def getNeighbors(self, loc:Location) -> list:
-        neighbors = list()
+    def getNeighbors(self, loc:Location) -> typing.Iterable:
         for neighborLoc in self.getOccupiedAdjacentLocations(loc):
-            neighbors.append(self.get(neighborLoc))
-        return neighbors
+            yield self.get(neighborLoc)
 
-    def getValidAdjacentLocations(self, loc:Location) -> typing.List[Location]:
-        locs = list()
+    def getValidAdjacentLocations(self, loc:Location) -> typing.Iterable[Location]:
         for d in range(Location.NORTH, Location.FULL_CIRCLE, Location.HALF_RIGHT):
             neighborLoc = loc.getAdjacentLocation(d)
             if(self.isValid(neighborLoc)):
-                locs.append(neighborLoc)
-        return locs
+                yield neighborLoc
 
-    def getEmptyAdjacentLocations(self, loc:Location) -> typing.List[Location]:
-        locs = list()
+
+    def getEmptyAdjacentLocations(self, loc:Location) -> typing.Iterable[Location]:
         for neighborLoc in self.getValidAdjacentLocations(loc):
             if self.get(neighborLoc) is None:
-                locs.append(neighborLoc)
-        return locs
+                yield neighborLoc
 
-    def getOccupiedAdjacentLocations(self, loc:Location) -> typing.List[Location]:
-        locs = list()
+    def getOccupiedAdjacentLocations(self, loc:Location) -> typing.Iterable[Location]:
         for neighborLoc in self.getValidAdjacentLocations(loc):
             if self.get(neighborLoc) is not None:
-                locs.append(neighborLoc)
-        return locs
+                yield neighborLoc
 
     def __str__(self):
         return self.__class__.__name__ + "{" + ", ".join(map(
             (lambda x: str(x) + "=" + str(self.get(x))), 
-            self.occupiedLocations
+            list(self.occupiedLocations)
         )) + "}"
 
 
@@ -191,12 +184,10 @@ class BoundedGrid(AbstractGrid):
     
     @property
     def occupiedLocations(self):
-        the_locations = list()
         for r, row in enumerate(self.occupant_array):
             for c, item in enumerate(row):
                 if item is not None:
-                    the_locations.append(Location(r,c))
-        return the_locations
+                    yield Location(r,c)
 
     def get(self, loc:Location):
         if not self.isValid(loc):
