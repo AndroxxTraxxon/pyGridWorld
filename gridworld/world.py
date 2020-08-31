@@ -23,7 +23,6 @@ class World:
         self.occupantClassNames = set()
         self.gridClassNames.add(BoundedGrid.__name__)
         self.gridClassNames.add(UnboundedGrid.__name__)
-        # print(self.gridClassNames)
 
     def show(self):
         if self.frame is None:

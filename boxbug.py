@@ -1,4 +1,4 @@
-from gridworld.actor import ActorWorld, Bug
+from gridworld.actor import ActorWorld, Bug, Rock
 from gridworld.grid import Location
 from gridworld.colors import Color
 class BoxBug(Bug):
@@ -24,14 +24,12 @@ if __name__ == "__main__":
     world = ActorWorld()
     alice = Bug(Color.ORANGE)
 
-
-    # bob = BoxBug(3)
+    bob = BoxBug(3)
 
 
     world.add(alice, Location(7,8))
-    # world.add(bob, Location(5,5))
-    print(world.getGrid())
-    print(world)
+    world.add(bob, Location(5,5))
+    world.add(Rock(), Location(4, 9))
     world.show()
     # input()
 

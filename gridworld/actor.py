@@ -98,7 +98,6 @@ class ActorWorld(World):
         for a in actors:
             if a.grid == gr:
                 a.act()
-        print(self)
     
     def add(self, occupant:Actor, loc:Location = None):
         if loc is None:
