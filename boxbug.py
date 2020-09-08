@@ -1,5 +1,5 @@
 from gridworld.actor import ActorWorld, Bug, Rock
-from gridworld.grid import Location
+from gridworld.grid import Location, BoundedGrid
 from gridworld.colors import Color
 
 import pprint
@@ -7,15 +7,15 @@ import pprint
 class BoxBug(Bug):
     
     steps:int
-    sideLength:int
+    side_length:int
     
     def __init__(self, length:int):
         super().__init__()
         self.steps = 0
-        self.sideLength = length
+        self.side_length = length
     
     def act(self):
-        if self.steps < self.sideLength and self.canMove():
+        if self.steps < self.side_length and self.can_move():
             self.move()
             self.steps += 1
         else:
@@ -24,11 +24,13 @@ class BoxBug(Bug):
             self.steps = 0
 
 if __name__ == "__main__":
-    world = ActorWorld()
-    for i in range(8):
-        bug = BoxBug(i+1)
-        bug.color = Color.random()
-        world.add(bug)
+    grid = BoundedGrid()
+    world = ActorWorld(grid)
+    alice = BoxBug(6)
+    alice.color = Color.ORANGE
+    bob = BoxBug(3)
+    # world.add(alice, Location(7, 8))
+    # world.add(bob, Location(5, 5))
     world.show()
-    # input()
+
 

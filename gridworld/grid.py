@@ -150,16 +150,23 @@ class AbstractGrid(Grid):
                 yield neighborLoc
 
     def __str__(self):
-        return self.__class__.__name__ + "{" + ", ".join(map(
-            (lambda x: str(x) + "=" + str(self.get(x))), 
-            list(self.occupiedLocations)
-        )) + "}"
+        return "{name}({rows}x{cols}){{{occupants}}}".format(
+            name=self.__class__.__name__,
+            rows=self.rowCount,
+            cols=self.colCount,
+            occupants = ", ".join(
+                map(
+                    lambda x: str(x) + "=" + str(self.get(x)), 
+                    list(self.occupiedLocations)
+                )
+            )
+        )
 
 
 class BoundedGrid(AbstractGrid):
     occupant_array: typing.List[list]
 
-    def __init__(self, rows:int, cols:int):
+    def __init__(self, rows:int=15, cols:int=10):
         if rows <= 0:
             raise ValueError("rows <= 0")
         if cols <= 0:

@@ -4,7 +4,7 @@ import tkinter as tk
 
 
 class World:
-    gr: Grid = None
+    _grid: Grid = None
     occupant_types: dict = None
     grid_types: dict = None
     message: str = None
@@ -18,7 +18,7 @@ class World:
     def __init__(self, g:Grid=None):
         if g is None:
             g = BoundedGrid(self.DEFAULT_ROWS, self.DEFAULT_COLS)
-        self.gr = g
+        self.grid = g
         self.grid_types = dict()
         self.occupant_types = dict()
         self.add_grid_type(BoundedGrid)
@@ -30,12 +30,13 @@ class World:
             self.frame = WorldFrame(self)
         self.frame.show()
         
+    @property
+    def grid(self):
+        return self._grid
 
-    def getGrid(self):
-        return self.gr
-
-    def setGrid(self, newGrid:Grid):
-        self.gr = newGrid
+    @grid.setter
+    def grid(self, newGrid:Grid):
+        self._grid = newGrid
         self.repaint()
 
     def add_grid_type(self, grid_type:type):
@@ -59,7 +60,7 @@ class World:
         return False
 
     def getRandomEmptyLocation(self) -> Location:
-        gr = self.getGrid()
+        gr = self.grid()
         rows = gr.rowCount
         cols = gr.colCount
         if rows > 0 and cols > 0: # bounded grid
@@ -71,7 +72,6 @@ class World:
             if(len(emptyLocs) == 0):
                 return None
             r = int(self.generator.random() * len(emptyLocs))
-            print(r)
             return emptyLocs[r]
         else:
             while True:
@@ -89,15 +89,15 @@ class World:
                 if(gr.isValid(loc) and gr.get(loc) is None):
                     return loc
 
-    def add(self, loc:Location, occupant):
-        self.getGrid().put(loc, occupant)
+    def add(self, occupant, loc:Location):
+        self.grid().put(loc, occupant)
         qual_class_name = occupant.__module__ + '.' + occupant.__class__.__name__
         if qual_class_name not in self.occupant_types:
             self.occupant_types[qual_class_name] = occupant.__class__
         self.repaint()
 
     def remove(self, loc:Location):
-        r = self.getGrid().remove(loc)
+        r = self.grid().remove(loc)
         self.repaint()
         return r
 
@@ -107,7 +107,7 @@ class World:
 
     def __str__(self):
         s = "World:\n"
-        gr = self.getGrid()
+        gr = self.grid()
         rmin = 0
         rmax = gr.rowCount
         cmin = 0

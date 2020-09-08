@@ -649,3 +649,6 @@ Color(205, 205, 0, 'YELLOW3')
 Color(139, 139, 0, 'YELLOW4')
 
 colors = Color.colordict
+
+__primary_names = ('RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE', 'INDIGO', 'VIOLET', 'BLACK', 'WHITE')
+primaries = dict(filter(lambda elem: elem[0] in __primary_names, colors.items()))

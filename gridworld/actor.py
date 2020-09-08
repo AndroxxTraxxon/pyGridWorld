@@ -7,25 +7,33 @@ import typing
 import random
 import tkinter as tk
 
-
 class Actor:
 
     grid:Grid
     location:Location
-    direction:int
+    _direction:int
     color:Color
 
     def __init__(self):
         self.color = Color.BLUE
-        self.direction = Location.NORTH
+        self._direction = Location.NORTH
         self.grid = None
         self.location = None
 
     def getGrid(self): 
         return self.grid
 
+    @property
+    def direction(self):
+        return self._direction
+
+    @direction.setter
+    def direction(self, direction):
+        self._direction = direction % Location.FULL_CIRCLE
+
+
     def act(self): 
-        self.direction += Location.HALF_CIRCLE
+        self.direction = self.direction + Location.HALF_CIRCLE
 
     def putSelfInGrid(self, gr:Grid, loc:Location):
         if self.grid is not None:
@@ -79,6 +87,14 @@ class Actor:
             ",color=" + str(self.color) + "]"
         )
 
+    @property
+    def image_description(self):
+        return "{name}[col:{color}; dir:{direction}]".format(
+            name=self.__class__.__name__,
+            color=str(self.color),
+            direction=str(int(self.direction))
+        )
+
 
 class ActorWorld(World):
     DEFAULT_MESSAGE = "Click on a grid location to construct or manipulate an actor."
@@ -93,10 +109,8 @@ class ActorWorld(World):
         super().show()
     
     def step(self):
-        if self.step_thread is not None and self.step_thread.is_alive:
-            self.step_thread.join(0.01)
         def action():
-            gr = self.getGrid()
+            gr = self.grid
             actors:typing.List[Actor] = list()
             for loc in gr.occupiedLocations:
                 actors.append(gr.get(loc))
@@ -110,15 +124,14 @@ class ActorWorld(World):
     def add(self, occupant:Actor, loc:Location = None):
         if loc is None:
             loc = self.getRandomEmptyLocation()
-            print(loc)
         if loc is not None:
-            occupant.putSelfInGrid(self.getGrid(), loc)
+            occupant.putSelfInGrid(self.grid, loc)
         qual_class_name = occupant.__module__ + '.' + occupant.__class__.__name__
         if qual_class_name not in self.occupant_types:
             self.occupant_types[qual_class_name] = occupant.__class__
     
     def remove(self, loc:Location) -> Actor:
-        occupant:Actor = self.getGrid().get(loc)
+        occupant:Actor = self.grid.get(loc)
         if occupant is not None:
             occupant.removeSelfFromGrid()
         return occupant
@@ -140,18 +153,18 @@ class Flower(Actor):
 
 class Bug(Actor):
     
-    def __init__(self, color=Color.RED):
+    def __init__(self, color:Color=Color.RED):
         super().__init__()
         self.color = color
 
     def act(self):
-        if self.canMove():
+        if self.can_move():
             self.move()
         else:
             self.turn()
 
     def turn(self):
-        self.direction += Location.HALF_RIGHT
+        self.direction = self.direction + Location.HALF_RIGHT
     
     def move(self):
         if self.grid is None:
@@ -166,7 +179,7 @@ class Bug(Actor):
         flower.putSelfInGrid(self.grid, loc)
         
 
-    def canMove(self):
+    def can_move(self):
         if self.grid is None:
             return False
         loc = self.location
@@ -191,31 +204,31 @@ class Critter(Actor):
     def act(self):
         if self.grid is None:
             return
-        actors = self.getActors()
-        self.processActors(actors)
-        moveLocs = self.getMoveLocations()
-        loc = self.selectMoveLocation(moveLocs)
-        self.makeMove(loc)
+        actors = self.get_actors()
+        self.process_actors(actors)
+        moveLocs = self.get_move_locations()
+        loc = self.select_move_location(moveLocs)
+        self.make_move(loc)
 
-    def getActors(self) -> typing.List[Actor]:
-        return self.grid.getNeighbors(self.location)
+    def get_actors(self) -> typing.List[Actor]:
+        return list(self.grid.getNeighbors(self.location))
 
-    def processActors(self, actors:typing.List[Actor]):
+    def process_actors(self, actors:typing.List[Actor]):
         for a in actors:
             if not isinstance(a, [Rock, Critter]):
                 a.removeSelfFromGrid()
             
-    def getMoveLocations(self) -> typing.List[Location]:
-        return self.grid.getEmptyAdjacentLocations(self.location)
+    def get_move_locations(self) -> typing.List[Location]:
+        return list(self.grid.getEmptyAdjacentLocations(self.location))
 
-    def selectMoveLocation(self, locs:typing.List[Location]) -> Location:
+    def select_move_location(self, locs:typing.List[Location]) -> Location:
         n = len(locs)
         if n == 0:
             return self.location
         r = random.randrange(0, len(locs))
         return locs[r]
 
-    def makeMove(self, loc:Location):
+    def make_move(self, loc:Location):
         if loc is None:
             self.removeSelfFromGrid()
         else:
