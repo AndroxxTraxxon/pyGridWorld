@@ -29,8 +29,8 @@ if __name__ == "__main__":
     alice = BoxBug(6)
     alice.color = Color.ORANGE
     bob = BoxBug(3)
-    # world.add(alice, Location(7, 8))
-    # world.add(bob, Location(5, 5))
+    world.add(alice, Location(7, 8))
+    world.add(bob, Location(5, 5))
     world.show()
 
 

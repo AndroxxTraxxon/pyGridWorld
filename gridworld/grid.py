@@ -128,24 +128,23 @@ class Grid:
 
 class AbstractGrid(Grid):
 
-    def getNeighbors(self, loc:Location) -> typing.Iterable:
-        for neighborLoc in self.getOccupiedAdjacentLocations(loc):
+    def neighbors(self, loc:Location) -> typing.Iterable:
+        for neighborLoc in self.occupied_adjacent_locations(loc):
             yield self.get(neighborLoc)
 
-    def getValidAdjacentLocations(self, loc:Location) -> typing.Iterable[Location]:
+    def valid_adjacent_locations(self, loc:Location) -> typing.Iterable[Location]:
         for d in range(Location.NORTH, Location.FULL_CIRCLE, Location.HALF_RIGHT):
             neighborLoc = loc.getAdjacentLocation(d)
             if(self.isValid(neighborLoc)):
                 yield neighborLoc
 
-
-    def getEmptyAdjacentLocations(self, loc:Location) -> typing.Iterable[Location]:
-        for neighborLoc in self.getValidAdjacentLocations(loc):
+    def empty_adjacent_locations(self, loc:Location) -> typing.Iterable[Location]:
+        for neighborLoc in self.valid_adjacent_locations(loc):
             if self.get(neighborLoc) is None:
                 yield neighborLoc
 
-    def getOccupiedAdjacentLocations(self, loc:Location) -> typing.Iterable[Location]:
-        for neighborLoc in self.getValidAdjacentLocations(loc):
+    def occupied_adjacent_locations(self, loc:Location) -> typing.Iterable[Location]:
+        for neighborLoc in self.valid_adjacent_locations(loc):
             if self.get(neighborLoc) is not None:
                 yield neighborLoc
 
@@ -166,7 +165,7 @@ class AbstractGrid(Grid):
 class BoundedGrid(AbstractGrid):
     occupant_array: typing.List[list]
 
-    def __init__(self, rows:int=15, cols:int=10):
+    def __init__(self, rows:int=10, cols:int=10):
         if rows <= 0:
             raise ValueError("rows <= 0")
         if cols <= 0:

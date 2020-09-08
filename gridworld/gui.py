@@ -216,6 +216,11 @@ class WorldFrame(tk.Toplevel):
 
 class GridPanel(tk.Frame):
     
+    # Canvas render tags
+    TAG_OCCUPANTS='occ'
+    TAG_GRID='grid'
+
+    # static constants
     MIN_CELL_SIZE:int = 12
     DEFAULT_CELL_SIZE:int = 48
     DEFAULT_CELL_COUNT:int = 10
@@ -234,6 +239,8 @@ class GridPanel(tk.Frame):
     image_sources:dict
     used_images:dict
 
+
+
     def __init__(self, parent:WorldFrame):
         super().__init__(parent)
         self._tooltips_enabled = True
@@ -245,6 +252,25 @@ class GridPanel(tk.Frame):
         self.image_sources = dict()
         self.used_images = dict()
         self.grid = parent.world.grid
+        width = self.num_cols * (self.cell_size + self.line_width)
+        height = self.num_rows * (self.cell_size + self.line_width)
+        self.canvas = tk.Canvas(self, 
+            bg=str(Color.GRAY53),
+            width=width, height=height,
+            bd=None,
+            relief="groove",
+            scrollregion=(
+                -self.line_width, 
+                -self.line_width,
+                width, height
+            ),
+        )
+        self.render(True)
+        self.canvas.bind('<Button-1>', self.handle_click)
+        self.canvas.bind('<Button-3>', self.handle_click)
+        self.canvas.bind('<Return>', self.show_location_menu)
+        self.canvas.bind('<space>', lambda event: parent.world.step())
+        self.focus_set()
 
     @property
     def grid(self) -> Grid:
@@ -277,32 +303,22 @@ class GridPanel(tk.Frame):
         else:
             pass
 
-    def render(self):
+    def render(self, draw_grid=False):
         width = self.num_cols * (self.cell_size + self.line_width)
         height = self.num_rows * (self.cell_size + self.line_width)
-        if hasattr(self, 'canvas'):
-            self.canvas.destroy()
-        self.canvas = tk.Canvas(self, 
-            bg=str(Color.GRAY53),
-            width=width, height=height,
-            bd=None,
-            relief="groove",
-            scrollregion=(
-                -self.line_width, 
-                -self.line_width,
-                width, height
-            ),
-        )
-        self.canvas.create_rectangle(
-            0,0, 
-            width,height, 
-            fill=str(Color.WHITE),
-            width=self.line_width
-        )
-        self.drawGridLines()
-        self.drawOccupants()
-        self.drawCurrentLocation()
 
+        if draw_grid:
+            self.canvas.create_rectangle(
+                0,0, 
+                width,height, 
+                fill=str(Color.WHITE),
+                width=self.line_width
+            )
+            self.drawGridLines()
+            self.drawCurrentLocation()
+
+        self.canvas.delete(self.TAG_OCCUPANTS)
+        self.drawOccupants()
 
         self.canvas.pack(
             anchor=tk.NW,
@@ -353,6 +369,7 @@ class GridPanel(tk.Frame):
                 int(ytop + self.cell_size/2), 
                 image=image,
                 anchor=tk.CENTER,
+                tags=self.TAG_OCCUPANTS
                 )
         else:
             self.canvas.create_text(
@@ -360,6 +377,7 @@ class GridPanel(tk.Frame):
                 ytop, 
                 text=occupant.__class__.__name__,
                 anchor=tk.NW,
+                tags=self.TAG_OCCUPANTS
             )
 
     def generate_image(self, occupant):
@@ -405,11 +423,18 @@ class GridPanel(tk.Frame):
             (self.cell_size + self.line_width) * row,
             (self.cell_size + self.line_width) * (col+1),
             (self.cell_size + self.line_width) * (row+1),
-            width=self.line_width+1
+            width=self.line_width+1,
+            tags=self.TAG_GRID
         )
 
     def recalculateCellSize(self, min_size=MIN_CELL_SIZE):
         pass
+
+    def handle_click(self, event):
+        print('Canvas clicked!', event.x, event.y)
+
+    def show_location_menu(self, event):
+        print('Showing Location Menu!')
 
     def move_location(self, dr, dc):
         new_location = Location(
@@ -451,7 +476,7 @@ class GUIController(tk.Frame):
     occupant_classes: list
 
     def __init__(self, parent:WorldFrame, disp:GridPanel, res:dict):
-        super().__init__(parent, padx=5, height=500)
+        super().__init__(parent, padx=5, height=500, relief=tk.GROOVE, bd=2)
         self.resources = res
         self.display = disp
         self.parent_frame = parent
@@ -465,14 +490,14 @@ class GUIController(tk.Frame):
 
     def __make_controls(self):
         self.step_button = tk.Button(self, text="Step", command=self.step)
-        self.step_button.pack(side="left", padx=5, pady=5, ipadx=5, ipady=2)
+        self.step_button.pack(side="left", pady=2, ipadx=10, ipady=1)
         self.run_button = tk.Button(self, text="Run", command=self.run)
-        self.run_button.pack(side="left", padx=5, pady=5, ipadx=5, ipady=2)
+        self.run_button.pack(side="left", padx=10, pady=2, ipadx=10, ipady=1)
         self.stop_button = tk.Button(self, text="Stop", command=self.stop, state=tk.DISABLED)
-        self.stop_button.pack(side="left", padx=5, pady=5, ipadx=5, ipady=2)
+        self.stop_button.pack(side="left", pady=2, ipadx=10, ipady=1)
         slow_label = tk.Label(self, text="Slow")
         fast_label = tk.Label(self, text="Fast")
-        fast_label.pack(side="right", padx=5, pady=5)
+        fast_label.pack(side="right", padx=5, pady=2)
         
         speed_slider = tk.Scale(
             self, 
@@ -481,7 +506,7 @@ class GUIController(tk.Frame):
             from_=self.MAX_DELAY_MSECS,
             to=self.MIN_DELAY_MSECS,
             resolution=5,
-            # showvalue=False,
+            showvalue=False,
             command=self.__update_delay_time
         )
         
