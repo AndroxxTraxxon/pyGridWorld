@@ -5,6 +5,7 @@ import tkinter as tk
 
 class World:
     _grid: Grid = None
+    _message:str = None
     occupant_types: dict = None
     grid_types: dict = None
     message: str = None
@@ -43,12 +44,14 @@ class World:
         qual_class_name = grid_type.__module__ + '.' + grid_type.__class__.__name__
         self.grid_types[qual_class_name] = grid_type
 
-    def setMessage(self, newMessage:str):
-        self.message = newMessage
-        self.repaint()
-    
-    def getMessage(self):
-        return self.message
+    @property
+    def message(self):
+        return self._message
+
+    @message.setter
+    def message(self, message:str):
+        self._message = message
+        self.repaint
 
     def step(self):
         self.repaint()
@@ -93,6 +96,8 @@ class World:
         qual_class_name = occupant.__module__ + '.' + occupant.__class__.__name__
         if qual_class_name not in self.occupant_types:
             self.occupant_types[qual_class_name] = occupant.__class__
+            if self.frame is not None:
+                self.frame.load_class_image(occupant.__class__)
         self.repaint()
 
     def remove(self, loc:Location):

@@ -95,8 +95,10 @@ class WorldFrame(tk.Toplevel):
         self.control.pack(fill=tk.X, side=tk.BOTTOM, expand=False)
         self.display.pack(fill=tk.BOTH, side=tk.TOP, expand=tk.TRUE)
         self.make_menus()
-        self.make_keybindings()
+        self.bind_keys()
+        self.load_class_images()
         self.wm_resizable(width=True, height=True)
+        
 
     @property
     def control(self) -> "GUIController":
@@ -120,14 +122,12 @@ class WorldFrame(tk.Toplevel):
         else:
             self.withdraw()
             
-
     def show(self):
         self.running = True
         self.setVisible(True)
         self.rerender()
         self.wm_protocol('WM_DELETE_WINDOW', self.hide)
         self.mainloop()
-
 
     def hide(self):
         self.running = False
@@ -151,7 +151,6 @@ class WorldFrame(tk.Toplevel):
     def rerender(self):
         self.__needs_render = True
         
-
     def make_menus(self):
         mbar = tk.Menu(self)
 
@@ -190,7 +189,7 @@ class WorldFrame(tk.Toplevel):
         mbar.add_cascade(label="Help", menu=help_menu)
         self.config(menu=mbar)
 
-    def make_keybindings(self):
+    def bind_keys(self):
         self.bind('<Up>', lambda event:self.display.move_location(-1, 0))
         self.bind('<Down>', lambda event:self.display.move_location(1, 0))
         self.bind('<Left>', lambda event:self.display.move_location(0, -1))
@@ -218,7 +217,6 @@ class WorldFrame(tk.Toplevel):
                 self.world.add(occupant, loc)
         self.rerender()
 
-
     def show_about(self):
         pass
 
@@ -231,6 +229,12 @@ class WorldFrame(tk.Toplevel):
     def setRunMenuItemsEnabled(self, enabled:bool):
         pass
 
+    def load_class_images(self):
+        for class_type in self.world.occupant_types.values():
+            self.load_class_image(class_type)
+
+    def load_class_image(self, class_type:type):
+        self.control.load_menu_image(class_type)
 
 class GridPanel(tk.Frame):
     
@@ -679,21 +683,38 @@ class GUIController(tk.Frame):
             messagebox.showinfo(title, str(value))
         return action
 
+    def load_menu_image(self, class_type:type):
+        if not hasattr(self, "menu_images"): # init the image cache
+            self.menu_images = dict()
+        name = class_type.__name__
+        if name not in self.menu_images: # checking the cache
+            img_src = self.display.get_source_image(class_type)
+            if img_src is not None:
+                img_src.thumbnail((12,12), Image.ANTIALIAS)
+                # cache the image
+                self.menu_images[name] = ImageTk.PhotoImage(img_src)
 
     def edit_location(self):
-        self.menu_images = list()
+        if not hasattr(self, "menu_images"):
+            # init the image cache
+            self.menu_images = dict()
         self.menu=tk.Menu(self, tearoff=False)
         occupant = self.display.grid.get(self.display.current_location)
         if occupant is None:
             for name, occ_type in self.parent_frame.world.occupant_types.items():
-                img_src = self.display.get_source_image(occ_type)
                 image_config = dict()
-                if img_src is not None:
-                    img_src.thumbnail((12,12), Image.ANTIALIAS)
-                    tk_img = ImageTk.PhotoImage(img_src)
+                if name not in self.menu_images: # checking the cache
+                    img_src = self.display.get_source_image(occ_type)
+                    if img_src is not None:
+                        img_src.thumbnail((12,12), Image.ANTIALIAS)
+                        # cache the image
+                        self.menu_images[name] = ImageTk.PhotoImage(img_src)
+
+                # get image from cache
+                tk_img = self.menu_images.get(name)
+                if tk_img is not None:
                     image_config["image"] = tk_img
                     image_config["compound"] = tk.LEFT
-                    self.menu_images.append(tk_img)
                 
                 if self.menu.index(tk.END) is not None:
                     self.menu.add_separator()

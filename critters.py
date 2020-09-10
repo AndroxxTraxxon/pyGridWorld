@@ -135,3 +135,4 @@ run_type = "crab"
 if __name__ == "__main__":
     # run_critter()
     run_crab_critter()
+    # run_chameleon_critter()

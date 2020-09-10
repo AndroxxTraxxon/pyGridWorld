@@ -92,7 +92,7 @@ class ActorWorld(World):
 
     def show(self):
         if(self.message is None):
-            self.setMessage(self.DEFAULT_MESSAGE)
+            self.message = self.DEFAULT_MESSAGE
         super().show()
     
     def step(self):
@@ -112,6 +112,8 @@ class ActorWorld(World):
         qual_class_name = occupant.__module__ + '.' + occupant.__class__.__name__
         if qual_class_name not in self.occupant_types:
             self.occupant_types[qual_class_name] = occupant.__class__
+            if self.frame is not None:
+                self.frame.load_class_image(occupant.__class__)
     
     def remove(self, loc:Location) -> Actor:
         occupant:Actor = self.grid.get(loc)
