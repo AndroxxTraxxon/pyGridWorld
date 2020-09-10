@@ -234,6 +234,7 @@ class UnboundedGrid(AbstractGrid):
     def is_valid(self, loc:Location) -> bool:
         return True
 
+    @property
     def occupied_locations(self) -> typing.List[Location]:
         return list(self.occupant_map.keys())
     

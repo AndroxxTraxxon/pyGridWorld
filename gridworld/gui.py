@@ -236,6 +236,7 @@ class WorldFrame(tk.Toplevel):
     def load_class_image(self, class_type:type):
         self.control.load_menu_image(class_type)
 
+
 class GridPanel(tk.Frame):
     
     # Canvas render tags
@@ -484,6 +485,7 @@ class GridPanel(tk.Frame):
         )
 
     def recalculate_cell_size(self, min_size=MIN_CELL_SIZE):
+        previous_cell_size = self.cell_size
         if self.winfo_width() > 1: # the window and widget have to actually be visible on the screen
             if self.num_rows == 0 or self.num_cols == 0:
                 self.cell_size = 0
@@ -501,9 +503,12 @@ class GridPanel(tk.Frame):
                 else:
                     while (self.cell_size // 2) >= max(desired_size, min_size):
                         self.cell_size //= 2
+        if previous_cell_size != self.cell_size:
+            self.used_images.clear()
         # self.cell_size = self.DEFAULT_CELL_SIZE
 
     def move_location(self, dr, dc):
+        needs_occupant_rerender = False
         new_location = Location(
             self.current_location.row + dr,
             self.current_location.col + dc,
@@ -514,15 +519,20 @@ class GridPanel(tk.Frame):
         if self.is_pannable_unbounded():
             if self.origin_row > self.current_location.row:
                 self.origin_row = self.current_location.row
+                needs_occupant_rerender = True
             if self.origin_col > self.current_location.col:
                 self.origin_col = self.current_location.col
+                needs_occupant_rerender = True
 
             rows = int(self.winfo_height()) // (self.cell_size + 1)
             cols = int(self.winfo_width()) // (self.cell_size + 1)
-            if self.origin_row + rows - 1 < self.current_location.rows:
+            if self.origin_row + rows - 1 < self.current_location.row:
                 self.origin_row = self.current_location.row - rows + 1
+                needs_occupant_rerender = True
             if self.origin_col + cols - 1 < self.current_location.col:
-                self.origin_col = self.current_location - cols + 1
+                self.origin_col = self.current_location.col - cols + 1
+                needs_occupant_rerender = True
+
         else:
             dx = 0
             dy = 0
@@ -534,6 +544,8 @@ class GridPanel(tk.Frame):
             
 
         self.draw_current_location()
+        if needs_occupant_rerender:
+            self.draw_occupants()
 
     def point_for_location(self, loc:Location):
         return (
