@@ -2,17 +2,16 @@ from gridworld.actor import ActorWorld, Bug, Rock
 from gridworld.grid import Location, BoundedGrid
 from gridworld.colors import Color
 
-import pprint
-
 class BoxBug(Bug):
     
     steps:int
     side_length:int
     
-    def __init__(self, length:int):
+    def __init__(self, length:int = 4, color:Color = Color.RED):
         super().__init__()
         self.steps = 0
         self.side_length = length
+        self.color = color
     
     def act(self):
         if self.steps < self.side_length and self.can_move():

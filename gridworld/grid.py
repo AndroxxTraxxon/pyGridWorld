@@ -86,14 +86,14 @@ class Location:
 class Grid:
 
     @property
-    def rowCount(self) -> int:
+    def row_count(self) -> int:
         raise NotImplementedError()
 
     @property
-    def colCount(self) -> int:
+    def col_count(self) -> int:
         raise NotImplementedError()
 
-    def isValid(self, loc:Location) -> bool:
+    def is_valid(self, loc:Location) -> bool:
         raise NotImplementedError()
 
     def put(self, loc:Location, obj):
@@ -106,19 +106,19 @@ class Grid:
         raise NotImplementedError()
 
     @property
-    def occupiedLocations(self) -> typing.List[Location]:
+    def occupied_locations(self) -> typing.List[Location]:
         raise NotImplementedError()
 
-    def getValidAdjacentLocations(self, loc:Location):
+    def valid_adjacent_locations(self, loc:Location):
         raise NotImplementedError()
 
-    def getEmptyAdjacentLocations(self, loc:Location):
+    def empty_adjacent_locations(self, loc:Location):
         raise NotImplementedError()
 
-    def getOccupiedAdjacentLocations(self, loc:Location):
+    def occupied_adjacent_locations(self, loc:Location):
         raise NotImplementedError()
 
-    def getNeighbors(self, loc:Location):
+    def neighbors(self, loc:Location):
         raise NotImplementedError()
 
     @classmethod
@@ -135,7 +135,7 @@ class AbstractGrid(Grid):
     def valid_adjacent_locations(self, loc:Location) -> typing.Iterable[Location]:
         for d in range(Location.NORTH, Location.FULL_CIRCLE, Location.HALF_RIGHT):
             neighborLoc = loc.getAdjacentLocation(d)
-            if(self.isValid(neighborLoc)):
+            if(self.is_valid(neighborLoc)):
                 yield neighborLoc
 
     def empty_adjacent_locations(self, loc:Location) -> typing.Iterable[Location]:
@@ -151,12 +151,12 @@ class AbstractGrid(Grid):
     def __str__(self):
         return "{name}({rows}x{cols}){{{occupants}}}".format(
             name=self.__class__.__name__,
-            rows=self.rowCount,
-            cols=self.colCount,
+            rows=self.row_count,
+            cols=self.col_count,
             occupants = ", ".join(
                 map(
                     lambda x: str(x) + "=" + str(self.get(x)), 
-                    list(self.occupiedLocations)
+                    list(self.occupied_locations)
                 )
             )
         )
@@ -173,35 +173,35 @@ class BoundedGrid(AbstractGrid):
         self.occupant_array = [[None for c in range(cols)] for r in range(rows)]
 
     @property
-    def rowCount(self):
+    def row_count(self):
         return len(self.occupant_array)
 
     @property
-    def colCount(self):
+    def col_count(self):
         return len(self.occupant_array[0])
 
-    def isValid(self, loc:Location):
+    def is_valid(self, loc:Location):
         return (
             0 <= loc.row and
-            loc.row < self.rowCount and
+            loc.row < self.row_count and
             0 <= loc.col and 
-            loc.col < self.colCount
+            loc.col < self.col_count
         )
     
     @property
-    def occupiedLocations(self):
+    def occupied_locations(self):
         for r, row in enumerate(self.occupant_array):
             for c, item in enumerate(row):
                 if item is not None:
                     yield Location(r,c)
 
     def get(self, loc:Location):
-        if not self.isValid(loc):
+        if not self.is_valid(loc):
             raise ValueError("Location" + str(loc) + "is not valid")
         return self.occupant_array[loc.row][loc.col]
 
     def put(self, loc:Location, obj):
-        if not self.isValid(loc):
+        if not self.is_valid(loc):
             raise ValueError("Location" + str(loc) + "is not valid")
         if obj is None:
             raise ValueError("obj is None")
@@ -210,16 +210,11 @@ class BoundedGrid(AbstractGrid):
         return old_occupant
 
     def remove(self, loc:Location):
-        if not self.isValid(loc):
+        if not self.is_valid(loc):
             raise ValueError("Location" + str(loc) + "is not valid")
         old_occupant = self.get(loc)
         self.occupant_array[loc.row][loc.col] = None
         return old_occupant
-
-    @classmethod
-    def builder(cls, parent:tk.Toplevel):
-        return cls()
-
 
 class UnboundedGrid(AbstractGrid):
 
@@ -229,17 +224,17 @@ class UnboundedGrid(AbstractGrid):
         self.occupant_map = dict()
 
     @property
-    def rowCount(self) -> int:
+    def row_count(self) -> int:
         return -1
 
     @property
-    def colCount(self) -> int:
+    def col_count(self) -> int:
         return -1
 
-    def isValid(self, loc:Location) -> bool:
+    def is_valid(self, loc:Location) -> bool:
         return True
 
-    def occupiedLocations(self) -> typing.List[Location]:
+    def occupied_locations(self) -> typing.List[Location]:
         return list(self.occupant_map.keys())
     
     def get(self, loc:Location):
@@ -262,7 +257,3 @@ class UnboundedGrid(AbstractGrid):
         old_occupant = self.occupant_map.get(loc)
         self.occupant_map[loc] = None
         return old_occupant
-
-    @classmethod
-    def builder(cls, parent:tk.Toplevel):
-        return cls() 

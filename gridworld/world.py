@@ -60,12 +60,11 @@ class World:
         return False
 
     def getRandomEmptyLocation(self) -> Location:
-        gr = self.grid()
-        rows = gr.rowCount
-        cols = gr.colCount
+        rows = self.grid.row_count
+        cols = self.grid.col_count
         if rows > 0 and cols > 0: # bounded grid
             emptyLocs = list()
-            for r, row in enumerate(gr.occupant_array):
+            for r, row in enumerate(self.grid.occupant_array):
                 for c, item in enumerate(row):
                     if item is None:
                         emptyLocs.append(Location(r,c))
@@ -86,7 +85,7 @@ class World:
                 else:
                     c = self.generator.randint(0, cols)
                 loc = Location(r,c)
-                if(gr.isValid(loc) and gr.get(loc) is None):
+                if(self.grid.isValid(loc) and self.grid.get(loc) is None):
                     return loc
 
     def add(self, occupant, loc:Location):

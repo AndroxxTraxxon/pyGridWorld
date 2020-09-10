@@ -13,6 +13,7 @@ from time import time, sleep
 from threading import Thread, Event
 import tkinter as tk
 import tkinter.dialog as dialog
+import tkinter.messagebox as messagebox
 from queue import Queue
 
 root = tk.Tk()
@@ -46,7 +47,6 @@ def _search_for_image(name):
 
 class WorldFrame(tk.Toplevel):
 
-    control:"GUIController"
     display:"GridPanel"
     message_area:tk.Message
     message:tk.StringVar
@@ -59,12 +59,13 @@ class WorldFrame(tk.Toplevel):
 
     # private variables
     __needs_render:bool
+    _control:"GUIController" = None
 
     # classwide variables
     count:int = 0
     def __init__(self, world:World):
         super().__init__(root, padx=5, pady=5)
-
+    
         self.overrideredirect(1)
         self.withdraw()
         self.overrideredirect(0)
@@ -93,12 +94,18 @@ class WorldFrame(tk.Toplevel):
         self.control = GUIController(self, self.display, self.resources)
         self.control.pack(fill=tk.X, side=tk.BOTTOM, expand=False)
         self.display.pack(fill=tk.BOTH, side=tk.TOP, expand=tk.TRUE)
-
         self.make_menus()
+        self.make_keybindings()
         self.wm_resizable(width=True, height=True)
 
-        
+    @property
+    def control(self) -> "GUIController":
+        return self._control
 
+    @control.setter
+    def control(self, control:"GUIController"):
+        self._control = control
+        
     def setVisible(self, visible:bool):
         if self.visible == visible:
             return
@@ -107,6 +114,9 @@ class WorldFrame(tk.Toplevel):
         self.visible = visible
         if self.visible:
             self.deiconify()
+            self.update()
+            self.update_idletasks()
+            self.display.recalculate_cell_size()
         else:
             self.withdraw()
             
@@ -133,10 +143,10 @@ class WorldFrame(tk.Toplevel):
                 action_func = self.ui_update_actions.get()
                 action_func()
             if self.__needs_render:
+                self.__needs_render = False
                 self.display.render()
             self.update()
             self.update_idletasks()
-            sleep(0.01)
 
     def rerender(self):
         self.__needs_render = True
@@ -164,8 +174,8 @@ class WorldFrame(tk.Toplevel):
         view_menu.add_command(label="Down", command=lambda:self.display.move_location(1, 0))
         view_menu.add_command(label="Left", command=lambda:self.display.move_location(0, -1))
         view_menu.add_command(label="Right", command=lambda:self.display.move_location(0, 1))
-        view_menu.add_command(label="Edit", command=self.display.edit_location)
-        view_menu.add_command(label="Delete", command=self.display.delete_location)
+        view_menu.add_command(label="Edit", command=self.control.edit_location)
+        view_menu.add_command(label="Delete", command=self.control.delete_location)
         view_menu.add_command(label="Zoom In", command=self.display.zoom_in)
         view_menu.add_command(label="Zoom Out", command=self.display.zoom_out)
 
@@ -180,6 +190,14 @@ class WorldFrame(tk.Toplevel):
         mbar.add_cascade(label="Help", menu=help_menu)
         self.config(menu=mbar)
 
+    def make_keybindings(self):
+        self.bind('<Up>', lambda event:self.display.move_location(-1, 0))
+        self.bind('<Down>', lambda event:self.display.move_location(1, 0))
+        self.bind('<Left>', lambda event:self.display.move_location(0, -1))
+        self.bind('<Right>', lambda event:self.display.move_location(0, 1))
+        self.bind('<Return>', lambda event:self.control.edit_location())
+        self.bind('<Delete>', lambda event:self.control.delete_location())
+
     def configure_grid_type(self, grid_type:type):
         def action():
             instance = InstanceBuilder(self, grid_type).evaluate()
@@ -190,13 +208,13 @@ class WorldFrame(tk.Toplevel):
     def set_grid(self, new_grid:Grid):
         old_grid = self.world.grid
         occupants = dict()
-        for loc in tuple(old_grid.occupiedLocations):
+        for loc in tuple(old_grid.occupied_locations):
             occupants[loc] = self.world.remove(loc)
             
         self.world.grid = new_grid
         self.display.grid = new_grid
         for loc, occupant in occupants.items():
-            if new_grid.isValid(loc):
+            if new_grid.is_valid(loc):
                 self.world.add(occupant, loc)
         self.rerender()
 
@@ -217,8 +235,10 @@ class WorldFrame(tk.Toplevel):
 class GridPanel(tk.Frame):
     
     # Canvas render tags
-    TAG_OCCUPANTS='occ'
-    TAG_GRID='grid'
+    TAG_OCCUPANTS='OCCUPANTS'
+    TAG_GRID='GRID'
+    TAG_BACKGROUND='BACKGROUND'
+    TAG_CURRENTLOC='CURRENTLOC'
 
     # static constants
     MIN_CELL_SIZE:int = 12
@@ -233,7 +253,7 @@ class GridPanel(tk.Frame):
     origin_row:int
     origin_col:int
     cell_size:int
-    line_width:int
+    bd:int
     _tooltips_enabled:bool
     current_location:Location
     image_sources:dict
@@ -247,30 +267,38 @@ class GridPanel(tk.Frame):
         self.origin_row = 0
         self.origin_col = 0
         self.cell_size = self.DEFAULT_CELL_SIZE
-        self.line_width = self.DEFAULT_BORDER_WIDTH
+        self.bd = self.DEFAULT_BORDER_WIDTH
         self.current_location = Location(0,0)
         self.image_sources = dict()
         self.used_images = dict()
         self.grid = parent.world.grid
-        width = self.num_cols * (self.cell_size + self.line_width)
-        height = self.num_rows * (self.cell_size + self.line_width)
+        width = (self.grid.col_count * (self.cell_size + 1)) + (self.bd)
+        height = (self.grid.row_count * (self.cell_size + 1)) + (self.bd)
         self.canvas = tk.Canvas(self, 
             bg=str(Color.GRAY53),
-            width=width, height=height,
+            width=width,
+            height=height,
             bd=None,
             relief="groove",
             scrollregion=(
-                -self.line_width, 
-                -self.line_width,
+                -self.bd, 
+                -self.bd,
                 width, height
             ),
         )
+        self.canvas.pack(
+            anchor=tk.NW,
+            padx=self.bd,
+            pady=self.bd,
+            ipadx=self.bd,
+            ipady=self.bd,
+            fill=tk.BOTH,
+            expand=True,
+        )
+        self.canvas.update()
+        self.update()
+        self.world = parent.world
         self.render(True)
-        self.canvas.bind('<Button-1>', self.handle_click)
-        self.canvas.bind('<Button-3>', self.handle_click)
-        self.canvas.bind('<Return>', self.show_location_menu)
-        self.canvas.bind('<space>', lambda event: parent.world.step())
-        self.focus_set()
 
     @property
     def grid(self) -> Grid:
@@ -280,11 +308,20 @@ class GridPanel(tk.Frame):
     def grid(self, grid:Grid):
         try:
             self._grid = grid
-            self.num_cols = self.grid.colCount
-            self.num_rows = self.grid.rowCount
+            self.current_location = Location(0,0)
+            self.origin_col = 0
+            self.origin_row = 0
+            if self.grid.row_count == -1 and self.grid.col_count == -1:
+                self.num_rows = 2000
+                self.num_cols = 2000
+            else:
+                self.num_cols = self.grid.col_count
+                self.num_rows = self.grid.row_count
         except:
             self.num_cols = self.DEFAULT_CELL_COUNT
             self.num_rows = self.DEFAULT_CELL_COUNT
+
+        self.recalculate_cell_size(self.MIN_CELL_SIZE)
 
     @property
     def tooltips_enabled(self) -> bool:
@@ -303,158 +340,221 @@ class GridPanel(tk.Frame):
         else:
             pass
 
-    def render(self, draw_grid=False):
-        width = self.num_cols * (self.cell_size + self.line_width)
-        height = self.num_rows * (self.cell_size + self.line_width)
-
+    def render(self, draw_grid=True, draw_current_loc=True):
         if draw_grid:
+            self.draw_grid(True)
+        if draw_current_loc:
+            self.draw_current_location()
+        self.draw_occupants()
+
+    def draw_grid(self, draw_background=False):
+        width = self.num_cols * (self.cell_size + 1)
+        height = self.num_rows * (self.cell_size + 1)
+        self.canvas.delete(self.TAG_GRID)
+        if draw_background:
+            self.canvas.delete(self.TAG_BACKGROUND)
             self.canvas.create_rectangle(
-                0,0, 
-                width,height, 
+                0,
+                0, 
+                width,
+                height, 
                 fill=str(Color.WHITE),
-                width=self.line_width
+                width=1,
+                tags=self.TAG_BACKGROUND
             )
-            self.drawGridLines()
-            self.drawCurrentLocation()
+        self.draw_grid_lines()
 
-        self.canvas.delete(self.TAG_OCCUPANTS)
-        self.drawOccupants()
-
-        self.canvas.pack(
-            anchor=tk.NW,
-            padx=self.line_width,
-            pady=self.line_width,
-            ipadx=self.line_width,
-            ipady=self.line_width,
-            fill=tk.BOTH,
-            expand=True,
-        )
-
-    def drawGridLines(self):
-        width = self.num_cols * (self.cell_size + self.line_width)
-        height = self.num_rows * (self.cell_size + self.line_width)
-        self.canvas.create_line(0,0, 0,height, fill=str(Color.BLACK), width=self.line_width)
-        self.canvas.create_line(0,0, width,0, fill=str(Color.BLACK), width=self.line_width)
+    def draw_grid_lines(self):
+        width = self.num_cols * (self.cell_size + self.bd)
+        height = self.num_rows * (self.cell_size + self.bd)
         for row_index in range(1,self.num_rows):
             self.canvas.create_line(
-                0,      (self.cell_size + self.line_width) * row_index,
-                width,  (self.cell_size + self.line_width) * row_index,
-                width=self.line_width
+                0,      self.bd + (self.cell_size + 1) * row_index,
+                width,  self.bd + (self.cell_size + 1) * row_index,
+                width=self.bd,
+                tags=self.TAG_GRID
             )
         for col_index in range(1,self.num_cols):
             self.canvas.create_line(
-                (self.cell_size + self.line_width) * col_index, 0,
-                (self.cell_size + self.line_width) * col_index, height,
-                width=self.line_width
+                self.bd + (self.cell_size + 1) * col_index, 0,
+                self.bd + (self.cell_size + 1) * col_index, height,
+                width=self.bd,
+                tags=self.TAG_GRID
             )
 
-    def drawOccupants(self):
-        for loc in self.grid.occupiedLocations:
+    def draw_occupants(self):
+        self.canvas.delete(self.TAG_OCCUPANTS)
+
+        for loc in self.grid.occupied_locations:
             occupant = self.grid.get(loc)
             if occupant is not None:
-                xleft = (self.cell_size + self.line_width) * loc.col + 1
-                ytop = (self.cell_size + self.line_width) * loc.row + 1
-                self.drawOccupant(xleft, ytop, occupant)
+                x,y = self.point_for_location(loc)
+                self.draw_occupant(x, y, occupant)
 
-    def drawOccupant(self, xleft:int, ytop:int, occupant):
+    def draw_occupant(self, x:int, y:int, occupant):
         image = None
-        if occupant.image_description in self.used_images:
-            image = self.used_images.get(occupant.image_description)
+        occ_desc = "{name}[col:{color}; dir:{direction}]".format(
+            name=occupant.__class__.__name__,
+            color=str(occupant.color),
+            direction=str(int(occupant.direction))
+        )
+        if occ_desc in self.used_images:
+            image = self.used_images.get(occ_desc)
+
         else:
             image = self.generate_image(occupant)
-            self.used_images[occupant.image_description] = image
+            self.used_images[occ_desc] = image
         if image is not None:
             self.canvas.create_image(
-                int(xleft + self.cell_size/2), 
-                int(ytop + self.cell_size/2), 
+                int(x), 
+                int(y), 
                 image=image,
                 anchor=tk.CENTER,
                 tags=self.TAG_OCCUPANTS
                 )
         else:
             self.canvas.create_text(
-                xleft, 
-                ytop, 
-                text=occupant.__class__.__name__,
+                x - self.cell_size//2, 
+                y - self.cell_size//2, 
+                text=occupant.__class__.__name__[0:4],
                 anchor=tk.NW,
                 tags=self.TAG_OCCUPANTS
             )
 
     def generate_image(self, occupant):
-        image = self.get_source_image(occupant.__class__.__name__)
-        image.thumbnail((self.cell_size, self.cell_size))
-        if hasattr(occupant, 'color') and isinstance(occupant.color, Color):
-            greyscale = ImageOps.grayscale(image)
-            h,s,v = occupant.color.hsv
-            white_map = Color.from_hsv(h,s,min(1.0, v*2))
-            colorized = ImageOps.colorize(
-                greyscale, 
-                Color.GRAY15.rgb, 
-                white_map.rgb, 
-                mid=occupant.color.rgb,
-                midpoint=80
-            )
-            try:
-                a = image.getchannel('A')
-                colorized.putalpha(a)
-            except:
-                pass
-            image = colorized.rotate(-occupant.direction)
-        output = ImageTk.PhotoImage(image)
-        return output
+        image = self.get_source_image(occupant)
+        if image:
+            image.thumbnail((self.cell_size, self.cell_size))
+            if hasattr(occupant, 'color') and isinstance(occupant.color, Color):
+                greyscale = ImageOps.grayscale(image)
+                h,s,v = occupant.color.hsv
+                white_map = Color.from_hsv(h,s,min(1.0, v*2))
+                colorized = ImageOps.colorize(
+                    greyscale, 
+                    Color.GRAY15.rgb, 
+                    white_map.rgb, 
+                    mid=occupant.color.rgb,
+                    midpoint=80
+                )
+                try:
+                    a = image.getchannel('A')
+                    colorized.putalpha(a)
+                except:
+                    pass
+                image = colorized.rotate(-occupant.direction)
+            output = ImageTk.PhotoImage(image)
+            return output
+        return None
 
-    def get_source_image(self, name):
-        if name in self.image_sources:
-            return self.image_sources.get(name).copy()
-        path = _search_for_image(name)
-        if path is None:
-            return None
-        image = Image.open(path)
-        maxsize = (480, 480)
-        image.thumbnail(maxsize, Image.ANTIALIAS) # no need for the images to be huge. crop this down.
-        self.image_sources[name] = image
-        return image.copy()
+    def get_source_image(self, obj):
+        if isinstance(obj, type):
+            _cls = obj
+        else:
+            _cls = obj.__class__
+        while _cls is not None:
+            name = _cls.__name__
+            if name in self.image_sources:
+                return self.image_sources.get(name).copy()
+            path = _search_for_image(name)
+            if path is None:
+                _cls = _cls.__base__
+                continue
+            image = Image.open(path)
+            maxsize = (480, 480)
+            image.thumbnail(maxsize, Image.ANTIALIAS) # no need for the images to be huge. crop this down.
+            self.image_sources[name] = image
+            return image.copy()
+        return None
 
-    def drawCurrentLocation(self):
-        row = self.current_location.row
-        col = self.current_location.col
+    def draw_current_location(self):
+        self.canvas.delete(self.TAG_CURRENTLOC)
+        x,y = self.point_for_location(self.current_location)
+        d = self.cell_size//2
         self.canvas.create_rectangle(
-            (self.cell_size + self.line_width) * col,
-            (self.cell_size + self.line_width) * row,
-            (self.cell_size + self.line_width) * (col+1),
-            (self.cell_size + self.line_width) * (row+1),
-            width=self.line_width+1,
-            tags=self.TAG_GRID
+            x - d,
+            y - d,
+            x + d,
+            y + d,
+            width=self.bd+1,
+            tags=self.TAG_CURRENTLOC
         )
 
-    def recalculateCellSize(self, min_size=MIN_CELL_SIZE):
-        pass
-
-    def handle_click(self, event):
-        print('Canvas clicked!', event.x, event.y)
-
-    def show_location_menu(self, event):
-        print('Showing Location Menu!')
+    def recalculate_cell_size(self, min_size=MIN_CELL_SIZE):
+        if self.winfo_width() > 1: # the window and widget have to actually be visible on the screen
+            if self.num_rows == 0 or self.num_cols == 0:
+                self.cell_size = 0
+            else:
+                root.update_idletasks()
+                root.update()
+                desired_size = min(
+                    (self.winfo_height() - (self.DEFAULT_BORDER_WIDTH * 2))/self.num_rows,
+                    (self.winfo_width() - (self.DEFAULT_BORDER_WIDTH * 2))/self.num_cols
+                ) - 1
+                self.cell_size = self.DEFAULT_CELL_SIZE
+                if self.cell_size <= desired_size:
+                    while 2 * self.cell_size <= desired_size:
+                        self.cell_size *= 2
+                else:
+                    while (self.cell_size // 2) >= max(desired_size, min_size):
+                        self.cell_size //= 2
+        # self.cell_size = self.DEFAULT_CELL_SIZE
 
     def move_location(self, dr, dc):
         new_location = Location(
             self.current_location.row + dr,
             self.current_location.col + dc,
         )
-        if self.grid.isValid(new_location):
-            self.current_location = new_location
+        if not self.grid.is_valid(new_location):
+            return
+        self.current_location = new_location
+        if self.is_pannable_unbounded():
+            if self.origin_row > self.current_location.row:
+                self.origin_row = self.current_location.row
+            if self.origin_col > self.current_location.col:
+                self.origin_col = self.current_location.col
 
-    def edit_location(self):
-        pass
+            rows = int(self.winfo_height()) // (self.cell_size + 1)
+            cols = int(self.winfo_width()) // (self.cell_size + 1)
+            if self.origin_row + rows - 1 < self.current_location.rows:
+                self.origin_row = self.current_location.row - rows + 1
+            if self.origin_col + cols - 1 < self.current_location.col:
+                self.origin_col = self.current_location - cols + 1
+        else:
+            dx = 0
+            dy = 0
+            point_x, point_y = self.point_for_location(self.current_location)
+            left = point_x - (self.cell_size // 2)
+            right = point_x + (self.cell_size // 2)
+            top = point_y - (self.cell_size // 2)
+            bottom = point_y + (self.cell_size // 2)
+            
 
-    def delete_location(self):
-        pass
+        self.draw_current_location()
+
+    def point_for_location(self, loc:Location):
+        return (
+            self.col_to_x_coord(loc.col) + self.cell_size // 2,
+            self.row_to_y_coord(loc.row) + self.cell_size // 2
+        )
+
+    def col_to_x_coord(self, col:int) -> int:
+        return (col - self.origin_col) * (self.cell_size + 1) + 1 + self.DEFAULT_BORDER_WIDTH
+
+    def row_to_y_coord(self, row:int) -> int:
+        return (row - self.origin_row) * (self.cell_size + 1) + 1 + self.DEFAULT_BORDER_WIDTH
+    
+    def is_pannable_unbounded(self) -> bool:
+        return self.grid is not None and (
+            self.grid.row_count == -1 or 
+            self.grid.col_count == -1
+        )
 
     def zoom_in(self):
         pass
 
     def zoom_out(self):
-        pass    
+        pass
+
 
 class GUIController(tk.Frame):
     INDEFINITE, FIXED_STEPS, PROMPT_STEPS = 0, 1, 2
@@ -480,12 +580,13 @@ class GUIController(tk.Frame):
         self.resources = res
         self.display = disp
         self.parent_frame = parent
-        self.occupant_classes = list()
+        self.occupant_classes = parent.world.occupant_types
         self.delay_time = tk.IntVar()
         self.delay_time.set(self.INITIAL_DELAY)
         self.__make_controls()
         self.num_steps_to_run = 0
         self.num_steps_so_far = 0
+        self.timer = None
         self.running = False
 
     def __make_controls(self):
@@ -513,8 +614,12 @@ class GUIController(tk.Frame):
         speed_slider.pack(side="right", padx=5, pady=5)
         slow_label.pack(side="right", padx=5, pady=5)
 
+        self.display.canvas.bind('<Button-1>', self.handle_click)
+        self.display.canvas.bind('<Button-3>', self.handle_click)
+
     def __update_delay_time(self, delay):
-        self.timer.delay_ms = int(delay)
+        if self.timer is not None:
+            self.timer.delay_ms = int(delay)
 
     def run(self):
         self.display.tooltips_enabled = False
@@ -546,6 +651,115 @@ class GUIController(tk.Frame):
         if self.num_steps_so_far == self.num_steps_to_run:
             self.stop()
 
+    def __action__create_object_default(self, object_type):
+        def action():
+            occupant = object_type()
+            self.parent_frame.world.add(occupant, self.display.current_location)
+            self.display.draw_occupants()
+        return action
+
+    def __action__create_object_with_ui(self, object_type):
+        def action():
+            occupant = InstanceBuilder(self.parent_frame, object_type).evaluate()
+            if occupant: # this can come back none if cancelled
+                self.parent_frame.world.add(occupant, self.display.current_location)
+                self.display.draw_occupants()
+        return action
+
+    def __action__call_function(self, function):
+        def action():
+            value = FunctionCaller(self.parent_frame, function).evaluate()
+            self.display.render()
+            if value is not None:
+                messagebox.showinfo(function.__name__, str(value))
+        return action
+
+    def __action__show_value(self, title, value):
+        def action():
+            messagebox.showinfo(title, str(value))
+        return action
+
+
+    def edit_location(self):
+        self.menu_images = list()
+        self.menu=tk.Menu(self, tearoff=False)
+        occupant = self.display.grid.get(self.display.current_location)
+        if occupant is None:
+            for name, occ_type in self.parent_frame.world.occupant_types.items():
+                img_src = self.display.get_source_image(occ_type)
+                image_config = dict()
+                if img_src is not None:
+                    img_src.thumbnail((12,12), Image.ANTIALIAS)
+                    tk_img = ImageTk.PhotoImage(img_src)
+                    image_config["image"] = tk_img
+                    image_config["compound"] = tk.LEFT
+                    self.menu_images.append(tk_img)
+                
+                if self.menu.index(tk.END) is not None:
+                    self.menu.add_separator()
+                if InstanceBuilder.can_init_pure_default(occ_type):
+                    cmd_label = ".".join((occ_type.__module__, occ_type.__name__))
+                    self.menu.add_command(
+                        label="%s()"%cmd_label,
+                        command=self.__action__create_object_default(occ_type),
+                        **image_config
+                    )
+                cmd_label = ".".join((occ_type.__module__, occ_type.__name__) )
+                self.menu.add_command(
+                    label="%s(...)" % cmd_label,
+                    command=self.__action__create_object_with_ui(occ_type),
+                    **image_config
+                )    
+        else:
+            members = dict(((key, value) for key, value in inspect.getmembers(occupant) if not key.startswith("_")))
+            callables = dict()
+            properties = dict()
+            for name, member in members.items():
+                if callable(member):
+                    callables[name] = member
+                else:
+                    properties[name] = member
+            for name, function in callables.items():
+                if FunctionCaller.executable(function):
+                    self.menu.add_command(
+                        label="%s(...)" % name,
+                        command=self.__action__call_function(function)
+                    )
+            if self.menu.index(tk.END) is not None:
+                self.menu.add_separator()
+            for name, value in properties.items():
+                self.menu.add_command(
+                    label="%s" % name,
+                    command=self.__action__show_value(name, value)
+                )
+            
+        w_x = self.display.winfo_rootx()
+        w_y = self.display.winfo_rooty()
+        offset = self.display.DEFAULT_BORDER_WIDTH + self.display.cell_size//2
+        menu_x = w_x + offset + (self.display.cell_size + self.display.DEFAULT_BORDER_WIDTH) * self.display.current_location.col
+        menu_y = w_y + offset + (self.display.cell_size + self.display.DEFAULT_BORDER_WIDTH) * self.display.current_location.row
+        self.menu.post(menu_x, menu_y)
+        self.parent_frame.update()
+
+    def delete_location(self):
+        world = self.parent_frame.world
+        loc = self.display.current_location
+        if loc is not None:
+            world.remove(loc)
+            self.parent_frame.rerender()
+
+    def handle_click(self, event):
+        if not self.running:
+            # This location positioning might need to be corrected, 
+            # but it seems to be working right now.
+            loc_row = (event.y - self.display.bd * 3 - 1) // (self.display.cell_size + self.display.bd) + self.display.origin_row
+            loc_col = (event.x - self.display.bd * 3 - 1) // (self.display.cell_size + self.display.bd) + self.display.origin_col
+            calc_loc = Location(loc_row, loc_col)
+            if self.display.grid.is_valid(calc_loc):
+                self.display.current_location = calc_loc
+                self.display.draw_current_location()
+                self.edit_location()
+
 
 class ParamField:
 
@@ -559,6 +773,7 @@ class ParamField:
     def value(self):
         raise NotImplementedError()
 
+
 class StringField(ParamField):
 
     def __init__(self, parent_widget:tk.Widget, default_value:str = '', widget_options:dict=dict()):
@@ -567,6 +782,7 @@ class StringField(ParamField):
     @property
     def value(self):
         return str(self._widget.get())
+
 
 class NumberField(ParamField):
     __possible_types = (float, int)
@@ -620,16 +836,64 @@ class ColorField(ParamField):
         else:
             self._var.set(str(default_value))
         self.options = [option for option in select_options.keys()]
+        self.option_map = select_options
         self.options.append(self._rand_key)
         self._widget = tk.OptionMenu(parent_widget, self._var, *self.options)
 
     @property
     def value(self) -> Color:
         str_value = self._var.get()
-        if str_value is self._rand_key:
+        if str_value == self._rand_key:
             return Color.random()
         else:
-            return self.options[str_value]
+            return self.option_map[str_value]
+
+
+class LocationField(ParamField):
+    _row:tk.StringVar
+    _col:tk.StringVar
+    def __init__(self,
+            parent_widget:tk.Widget,
+            default_value:Location=Location(0,0),
+            widget_options:dict=dict()
+        ):
+
+        self._widget = tk.Frame(parent_widget)
+        self._row = tk.StringVar(parent_widget)
+        self._col = tk.StringVar(parent_widget)
+        row_box = tk.Spinbox(
+            self._widget,
+            textvariable=self._row,
+            increment=1,
+            from_=-1000000,
+            to=1000000,
+        )
+        row_box.pack(side=tk.LEFT)
+        col_box = tk.Spinbox(
+            self._widget,
+            textvariable=self._col,
+            increment=1,
+            from_=-1000000,
+            to=1000000,
+        )
+        col_box.pack(side=tk.LEFT)
+        if isinstance(default_value, Location):
+            self._row.set(str(default_value.row))
+            self._col.set(str(default_value.col))
+        else:
+            self._row.set(str(0))
+            self._col.set(str(0))
+
+    @property
+    def value(self) -> float:
+        try:
+            row = int(self._row.get())
+            col = int(self._col.get())
+            val = Location(row, col)
+        except:
+            val = None
+        return val
+
 
 class FunctionCaller(tk.Toplevel):
 
@@ -637,6 +901,14 @@ class FunctionCaller(tk.Toplevel):
     _method: type
     _fields:dict
     _finished: bool
+
+    buildable_types = [
+        str,
+        float,
+        int,
+        Color,
+        Location
+    ]
 
     def __init__(self, parent:tk.Toplevel, method:type):
         self.cancelled = False
@@ -646,6 +918,8 @@ class FunctionCaller(tk.Toplevel):
         self._method = method
         self.wm_protocol('WM_DELETE_WINDOW', self.cancel)
         self._finished = False
+        self.field_frame=tk.LabelFrame(self,text=method.__name__)
+        self.field_frame.pack(side=tk.TOP, fill=tk.X)
         self._build_fields()
         self.wm_title(method.__name__)
         button_frame = tk.Frame(self)
@@ -654,6 +928,9 @@ class FunctionCaller(tk.Toplevel):
         cancel_button = tk.Button(button_frame, text='Cancel', command=self.cancel)
         cancel_button.pack(side=tk.RIGHT)
         button_frame.pack(side=tk.TOP, fill=tk.X)
+        self.bind("<Return>", lambda event: self.hide())
+        self.bind("<Escape>", lambda event: self.cancel())
+        self.focus_set()
 
     def _build_fields(self):
         self._fields = dict()
@@ -665,7 +942,7 @@ class FunctionCaller(tk.Toplevel):
         if 'self' in parameters:
             del parameters['self'] # don't need to configure this...
         for name, param in parameters.items():
-            frame = tk.Frame(self)
+            frame = tk.Frame(self.field_frame)
             field_type = param.annotation
             field_default = None
             if field_type is inspect.Parameter.empty:
@@ -674,7 +951,7 @@ class FunctionCaller(tk.Toplevel):
                 'Inspected Classes must mark their __init__ methods with type annotations or ' 
                 'default values'
                 )
-                field_type = type(param)
+                field_type = type(param.default)
             if param.default is not inspect.Parameter.empty:
                 field_default = param.default
             field = self._build_field(frame, field_type, field_default)
@@ -690,8 +967,26 @@ class FunctionCaller(tk.Toplevel):
             float.__name__:lambda _default, **kwargs, :NumberField(frame, _default, field_type=field_type, widget_options=kwargs),
             int.__name__:lambda _default, **kwargs, :NumberField(frame, _default, field_type=field_type, widget_options=kwargs),
             Color.__name__:lambda _default, **kwargs, :ColorField(frame, _default, widget_options=kwargs),
+            Location.__name__: lambda _default, **kwargs, :LocationField(frame, _default, widget_options=kwargs),
         }
         return build_map[field_type.__name__](default, **kwargs)
+
+    @classmethod
+    def executable(cls, method):
+        parameters = dict(
+            inspect.signature(
+                method
+            ).parameters
+        )
+        if 'self' in parameters:
+            del parameters['self'] # don't need to configure this...
+        for name, field in parameters.items():
+            if (field.annotation not in cls.buildable_types and
+                field.default.__class__ not in cls.buildable_types):
+                return False
+
+        return True
+
 
     @property
     def values(self):
@@ -717,6 +1012,7 @@ class FunctionCaller(tk.Toplevel):
         self._finished = True
         self.initial_focus = None
         tk.Toplevel.destroy(self)
+        self._parent_window.focus_set()
 
     def show(self, **options):
         self.wm_deiconify()
@@ -740,6 +1036,22 @@ class InstanceBuilder(FunctionCaller):
         self._object_type = instance_type
         super().__init__(parent, instance_type.__init__)
         self.wm_title(instance_type.__name__)
+        self.field_frame.config(text=instance_type.__name__)
+
+    @staticmethod
+    def can_init_pure_default(_cls:type):
+        parameters = dict(
+            inspect.signature(
+                _cls.__init__
+            ).parameters
+        )
+        if parameters.get('self') is not None:
+            del parameters['self'] # this will never have a default, but we don't need it
+        for name, param in parameters.items():
+            if param.default is inspect.Parameter.empty:
+                return False
+
+        return True
 
     def evaluate(self):
         try:
